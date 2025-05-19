@@ -1,0 +1,78 @@
+# https 配置
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.p12
+    key-store-type: PKCS12
+    key-alias: secretkey
+    key-store-password: passfort
+
+# 数据库设置
+database:
+  name: passfort
+  host: localhost
+  port: 3306
+  # SSL证书相关配置
+  ssl:
+    ca-cert: D:/MySQL/TLS/ca-cert.pem
+    server-cert: D:/MySQL/TLS/server-cert.pem
+    server-key: D:/MySQL/TLS/server-key.pem
+    ca-cert-password: ""  # 如果没有密码，可以设置为空字符串
+
+# spring 配置
+spring:
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://${database.host}:${database.port}/${database.name}?useSSL=true&requireSSL=true&verifyServerCertificate=true&serverTimezone=UTC&characterEncoding=utf-8
+    username: ${db.username} # 使用程序参数传递的用户名
+    password: ${db.password} # 使用程序参数传递的密码
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    # HikariCP数据库连接池配置
+    hikari:
+      connection-timeout: 30000 # 连接超时时间（毫秒），30秒
+      idle-timeout: 600000 # 空闲连接超时时间（毫秒）,10分钟
+      max-lifetime: 1800000 # 最大连接生命周期（毫秒），30分钟
+      maximum-pool-size: 10 # 最大连接数
+      minimum-idle: 5 # 最小空闲连接数
+      initialization-fail-timeout: 1000 # 初始化失败超时时间（毫秒），1秒
+      leak-detection-threshold: 2000 # 泄露检测阈值（毫秒），2秒
+      auto-commit: true # 是否自动提交事务
+      pool-name: HikariCP_${database.name} # 连接池名称
+      data-source-properties:
+        # TLS 证书和密钥
+        ssl-ca: ${database.ssl.ca-cert}
+        ssl-cert: ${database.ssl.server-cert}
+        ssl-key: ${database.ssl.server-key}
+
+# MyBatis配置
+mybatis:
+  type-aliases-package: org.tool.passfort.model # 实体类包路径
+  mapper-locations: classpath:mappers/*.xml # Mapper XML文件路径
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 打印SQL语句到控制台
+    map-underscore-to-camel-case: true # 自动驼峰命名规则映射
+    cache-enabled: false # 禁用二级缓存
+    lazy-loading-enabled: true # 启用延迟加载
+    aggressive-lazy-loading: false # 禁用激进的延迟加载
+
+# MyBatis 分页插件配置
+pagehelper:
+  helperDialect: mysql  # 指定数据库类型，如 mysql、oracle 等
+  reasonable: true      # 是否分页合理化，当分页参数不合理时，自动调整为合理值
+  supportMethodsArguments: true  # 是否支持通过 Mapper 方法参数来传递分页参数
+  params: count=countSql;offset=offsetSql;limit=limitSql  # 自定义分页参数名称
+  autoRuntimeDialect: false  # 是否自动检测数据库方言
+  offsetAsPageNum: false     # 是否将 RowBounds 的 offset 当作页码使用
+  rowBoundsWithCount: true   # 是否使用 RowBounds 分页时进行 count 查询
+
+# jwt 配置
+jwt:
+  issuer: PassFort
+  audience: http://localhost/passfort/
+
+# 日志配置
+logging:
+  level:
+    org.tool.passfort.mapper: DEBUG # 设置Mapper接口的日志级别为DEBUG
