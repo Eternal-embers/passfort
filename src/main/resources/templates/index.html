@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统信息</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        .info-box {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 45%;
+        }
+        .info-box h2 {
+            margin-top: 0;
+            font-size: 1.5em;
+            color: #2c3e50;
+        }
+        .info-box ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .info-box li {
+            margin-bottom: 10px;
+            font-size: 1em;
+            color: #555;
+        }
+        .info-box li span {
+            font-weight: bold;
+            color: #34495e;
+        }
+        .info-box a {
+            color: #2980b9;
+            text-decoration: none;
+        }
+        .info-box a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="info-box">
+        <h2>软件信息</h2>
+        <ul>
+            <li><span>项目名称：</span><span th:text="${projectName}"></span></li>
+            <li><span>版本号：</span><span th:text="${version}"></span></li>
+            <li><span>构建时间：</span><span th:text="${buildTime}"></span></li>
+            <li><span>开发者信息：</span><span th:text="${developerInfo}"></span></li>
+            <li><span>版权声明：</span><span th:text="${copyright}"></span></li>
+            <li><span>文档链接：</span><a th:href="${docsLink}" target="_blank">查看文档</a></li>
+            <li><span>支持信息：</span><a th:href="${supportInfo}" target="_blank">获取支持</a></li>
+        </ul>
+    </div>
+    <div class="info-box">
+        <h2>系统信息</h2>
+        <ul>
+            <li><span>操作系统：</span><span th:text="${osInfo}"></span></li>
+            <li><span>Java版本：</span><span th:text="${javaVersion}"></span></li>
+            <li><span>服务器信息：</span><span th:text="${serverInfo}"></span></li>
+            <li><span>内存使用：</span><span th:text="${memoryInfo}"></span></li>
+            <li><span>CPU信息：</span><span th:text="${cpuInfo}"></span></li>
+            <li><span>运行时长：</span><span th:text="${uptime}"></span></li>
+            <li><span>数据库：</span><span th:text="${dbVersion}"></span></li>
+        </ul>
+    </div>
+</div>
+</body>
+</html>

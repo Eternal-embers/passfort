@@ -4,17 +4,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.tool.passfort.exception.*;
 import org.tool.passfort.mapper.UserMapper;
+import org.tool.passfort.model.LoginResponse;
 import org.tool.passfort.model.User;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.util.jwt.JwtUtil;
 import org.tool.passfort.util.secure.PasswordHasher;
+
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Transactional
 public class UserServiceImpl implements UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserMapper userMapper;
@@ -32,10 +37,9 @@ public class UserServiceImpl implements UserService {
      * 使用默认邮箱注册方式注册账号，根据抛出的不同异常方式判定注册失败的原因
      * @param email 邮箱地址
      * @param password 密码
-     * @return 注册成功返回 true，如果邮箱已经被注册返回 false
      */
     @Override
-    public boolean registerUser(String email, String password) throws PasswordHashingException, DatabaseOperationException {
+    public void registerUser(String email, String password) throws PasswordHashingException, DatabaseOperationException, EmailAlreadyRegisteredException {
         //检查邮箱是否被注册
         boolean isRegistered = userMapper.isEmailRegistered(email);
 
@@ -56,13 +60,11 @@ public class UserServiceImpl implements UserService {
                 logger.error("failed to register user for email: {}", email);
                 throw new DatabaseOperationException(email, "failed to register user");
             }
-
-            return true;
+        } else {
+            // 邮箱已经被注册
+            logger.error("email already registered: {}", email);
+            throw new EmailAlreadyRegisteredException(email);
         }
-
-        logger.error("email already registered: {}", email);
-
-        return false;
     }
 
     /**
@@ -73,7 +75,7 @@ public class UserServiceImpl implements UserService {
      * @return JWT token
      */
     @Override
-    public String loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException  {
+    public LoginResponse loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException {
         //检查帐号是否激活
         boolean isActive = userMapper.isActive(email);
         if(!isActive){
@@ -101,27 +103,28 @@ public class UserServiceImpl implements UserService {
         try {
             isPasswordValid = passwordHasher.verifyPassword(password, user.getPasswordHash());
         } catch (Exception e) {
-            logger.error("failed to verify password for email: {}", email);
+            //验证密码时出现错误
+            logger.error("an error occurred while verifying password for email: {}", email);
             throw new VerifyPasswordFailedException(email);
         }
 
         //生成jwt token
         if(isPasswordValid) {
-            String subject =  "user-" + user.getUserId();
+            // 用户id
+            Integer userId = user.getUserId();
+
             //创建 claims
             Map<String, String> claims = new HashMap<>();
-            if (user.getLastLoginAt() != null)
-                claims.put("lastLoginAt", user.getLastLoginAt().toString());
-            if (user.getFailedLoginAttempts() != null)
-                claims.put("failedLoginAttempts", user.getFailedLoginAttempts().toString());
-            if (user.getLastPasswordUpdate() != null)
-                claims.put("lastPasswordUpdate", user.getLastPasswordUpdate().toString());
+            claims.put("isAdmin", user.getIsAdmin().toString());
 
-            return jwtUtil.createToken(subject, claims, 3600);//1小时过期
+            String token =  jwtUtil.createToken(userId.toString(), claims, 3600);//1小时过期
+
+            return new LoginResponse(userId, token, claims);
         }
 
         logger.error("password invalid for email: {}", email);
-        return "";
+
+        throw new PasswordInvalidException(email);
     }
 
 
@@ -129,7 +132,6 @@ public class UserServiceImpl implements UserService {
      * 重置用户密码
      * @param email 邮箱地址
      * @param newPassword 新密码
-     * @return 如果重置成功返回 true，否则返回 false
      */
     @Override
     public boolean resetPassword(String email, String newPassword) {
@@ -141,7 +143,7 @@ public class UserServiceImpl implements UserService {
         try {
             isPasswordValid = passwordHasher.verifyPassword(newPassword, user.getPasswordHash());
         } catch (Exception e) {
-            logger.error("verify password failed when reset password for email: {}", email);
+            logger.error("Failed to execute database operation while resetting password for email: {}", email);
             return false;
         }
 

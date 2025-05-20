@@ -46,6 +46,12 @@ spring:
         ssl-cert: ${database.ssl.server-cert}
         ssl-key: ${database.ssl.server-key}
 
+  # Thymeleaf 模板引擎
+  thymeleaf:
+    enabled: true
+    prefix: classpath:/templates/
+    suffix: .html
+
 # MyBatis配置
 mybatis:
   type-aliases-package: org.tool.passfort.model # 实体类包路径
@@ -75,4 +81,5 @@ jwt:
 # 日志配置
 logging:
   level:
-    org.tool.passfort.mapper: DEBUG # 设置Mapper接口的日志级别为DEBUG
+    org.tool.passfort.mapper: DEBUG
+    org.tool.passfort.controller: DEBUG

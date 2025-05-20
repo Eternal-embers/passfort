@@ -1,7 +1,11 @@
-package org.tool.passfort.util.common;
+package org.tool.passfort.model;
 
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Setter
 @Getter
@@ -10,22 +14,26 @@ public class ApiResponse<T> {
     private int code; // 状态码
     private String msg; // 消息
     private T data; // 返回的数据
+    private String timestamp; // 时间戳，格式化后的日期和时间
 
     // 构造方法
     public ApiResponse() {
         this.code = 200; // 默认成功状态码
         this.msg = "操作成功";
+        this.timestamp = getCurrentTimestamp();
     }
 
     public ApiResponse(int code, String msg) {
         this.code = code;
         this.msg = msg;
+        this.timestamp = getCurrentTimestamp();
     }
 
     public ApiResponse(int code, String msg, T data) {
         this.code = code;
         this.msg = msg;
         this.data = data;
+        this.timestamp = getCurrentTimestamp();
     }
 
     // 静态方法，方便创建成功和失败的响应
@@ -35,5 +43,16 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> failure(int code, String msg) {
         return new ApiResponse<>(code, msg);
+    }
+
+    // 获取当前时间戳的方法
+    private String getCurrentTimestamp() {
+        // 设置时区为系统默认时区
+        ZoneId zoneId = ZoneId.systemDefault();
+        // 获取当前时间
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
+        // 格式化时间戳
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return now.format(formatter);
     }
 }

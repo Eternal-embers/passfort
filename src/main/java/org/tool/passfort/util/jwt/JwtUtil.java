@@ -24,7 +24,7 @@ public class JwtUtil {
 
     /**
      * 创建JWT Token
-     * @param subject 主题, 它通常用于表示JWT所代表的实体，例如用户、资源或其他对象
+     * @param subject   主题, 它通常用于表示JWT所代表的实体，例如用户、资源或其他对象
      * @param claims    自定义声明（如用户名、用户ID等）
      * @param expireTime 过期时间（秒）
      * @return JWT Token
@@ -54,7 +54,6 @@ public class JwtUtil {
 
     /**
      * 验证 JWT 令牌是否有效。
-     * @param subject 令牌的主题（subject）。
      * @param token 要验证的 JWT 令牌字符串。
      * @return 返回解码后的 JWT 对象（DecodedJWT），其中包含令牌中的声明（claims）。
      * @throws JWTVerificationException 如果令牌验证失败，会抛出此异常。可能的原因包括：
@@ -64,9 +63,8 @@ public class JwtUtil {
      *                                  - 令牌尚未生效（nbf 声明）
      *                                  - 主题（subject）、签发者（issuer）或接收者（audience）不匹配
      */
-    public DecodedJWT verifyToken(String subject, String token) throws JWTVerificationException {
+    public DecodedJWT verifyToken(String token) throws JWTVerificationException {
         JWTVerifier verifier = JWT.require(algorithm)
-                .withSubject(subject)
                 .withIssuer(issuer)
                 .withAudience(audience)
                 .build();
