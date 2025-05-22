@@ -1,5 +1,6 @@
 package org.tool.passfort.service.impl;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,30 +8,42 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.tool.passfort.exception.*;
 import org.tool.passfort.mapper.UserMapper;
-import org.tool.passfort.model.LoginResponse;
+import org.tool.passfort.dto.LoginResponse;
 import org.tool.passfort.model.User;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.util.jwt.JwtUtil;
+import org.tool.passfort.util.redis.RedisUtil;
 import org.tool.passfort.util.secure.PasswordHasher;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 @Service
-@Transactional
+@Transactional(rollbackFor = DatabaseOperationException.class) // 开启事务，并在发生 DatabaseOperationException 异常时回滚
 public class UserServiceImpl implements UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserMapper userMapper;
     private final PasswordHasher passwordHasher;
     private final JwtUtil jwtUtil;
+    private final RedisUtil redisUtil;
+
+    // 常量
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "refreshToken:";
+    private static final long ACCESS_TOKEN_EXPIRE_TIME = 900; // 15分钟
+    private static final long REFRESH_TOKEN_EXPIRE_TIME = 604800; // 7天
+    private static final long LOCKOUT_TIME = 1800; // 30分钟
+    private static final long REFRESH_TOKEN_EXPIRING_SOON_THRESHOLD = 3600; // 1小时
 
     @Autowired
-    public UserServiceImpl(UserMapper userMapper, PasswordHasher passwordHasher, JwtUtil jwtUtil) {
+    public UserServiceImpl(UserMapper userMapper, PasswordHasher passwordHasher, JwtUtil jwtUtil, RedisUtil redisUtil) {
         this.userMapper = userMapper;
         this.passwordHasher = passwordHasher;
         this.jwtUtil = jwtUtil;
+        this.redisUtil = redisUtil;
     }
 
     /**
@@ -113,18 +126,51 @@ public class UserServiceImpl implements UserService {
             // 用户id
             Integer userId = user.getUserId();
 
-            //创建 claims
-            Map<String, String> claims = new HashMap<>();
-            claims.put("isAdmin", user.getIsAdmin().toString());
+            // 创建 access token
+            Map<String, String> accessClaims = new HashMap<>();
+            accessClaims.put("email", user.getEmail());
+            accessClaims.put("tokenType", "access");
+            String accessToken =  jwtUtil.createToken(userId.toString(), accessClaims, ACCESS_TOKEN_EXPIRE_TIME);//15分钟过期
 
-            String token =  jwtUtil.createToken(userId.toString(), claims, 3600);//1小时过期
+            // 创建 refresh token
+            Map<String, String> refreshClaims = new HashMap<>();
+            String uniqueSuffix = UUID.randomUUID().toString(); // 使用 UUID 生成唯一后缀
+            String key = generateRefreshTokenKey(String.valueOf(userId), uniqueSuffix);; // 生成 refresh token 的 key
 
-            return new LoginResponse(userId, token, claims);
+            refreshClaims.put("email", user.getEmail());
+            refreshClaims.put("tokenType", "refresh");
+            refreshClaims.put("key", key);
+
+            String refreshToken =  jwtUtil.createToken(userId.toString(), refreshClaims, REFRESH_TOKEN_EXPIRE_TIME);//7天过期
+
+            // 存储Refresh token到redis
+            redisUtil.setString(key, refreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
+
+            // 更新用户的最后登录时间
+            userMapper.updateLastLogin(email);
+
+            // 重置连续失败登录次数
+            userMapper.resetFailedLoginAttempts(email);
+
+            return new LoginResponse(userId, accessToken, refreshToken, ACCESS_TOKEN_EXPIRE_TIME, REFRESH_TOKEN_EXPIRE_TIME);
+        } else {
+            // 更新连续失败登录次数
+            userMapper.incrementFailedLoginAttempts(email);
+            int failedLoginAttempts = userMapper.getFailedLoginAttempts(email);
+
+            // 如果连续失败登录次数达到阈值的倍数，则锁定账户30分钟
+            if(failedLoginAttempts % 5 == 0) {
+                LocalDateTime lockoutUntil = LocalDateTime.now().plusSeconds(LOCKOUT_TIME);
+                userMapper.lockAccount(email, lockoutUntil);
+                // 记录日志，说明锁定账户的原因和具体操作
+                logger.info("Account locked due to {} consecutive failed login attempts. Account: {}, lockout until: {}",
+                        failedLoginAttempts, email, lockoutUntil);
+            }
+            logger.error("password invalid for email: {}, failed login attempts: {}", email, failedLoginAttempts);
+
+            // 密码错误
+            throw new PasswordInvalidException(email, failedLoginAttempts);
         }
-
-        logger.error("password invalid for email: {}", email);
-
-        throw new PasswordInvalidException(email);
     }
 
 
@@ -134,7 +180,7 @@ public class UserServiceImpl implements UserService {
      * @param newPassword 新密码
      */
     @Override
-    public boolean resetPassword(String email, String newPassword) {
+    public boolean resetPassword(String email, String newPassword) throws PasswordRepeatException {
         //获取用户信息
         User user = userMapper.getUserByEmail(email);
 
@@ -147,19 +193,20 @@ public class UserServiceImpl implements UserService {
             return false;
         }
 
-        //如果密码与上一次不同
-        if(!isPasswordValid) {
-            //创建新的密码哈希值
-            byte[] newPasswordHash;
-            try {
-                newPasswordHash = passwordHasher.hashPassword(newPassword);
-            } catch (Exception e) {
-                logger.error("failed to hash password when reset password for email: {}", email);
-                return false;
-            }
+        // 密码重复错误
+        if(isPasswordValid) {
+            logger.error("Password repeat for email: {}, old password: {}", email, newPassword);
+            throw new PasswordRepeatException(email);
+        }
 
+        try {
+            //创建新的密码哈希值
+            byte[] newPasswordHash = passwordHasher.hashPassword(newPassword);
             //更新密码
             userMapper.resetPassword(email, newPasswordHash);
+        } catch (Exception e) {
+            logger.error("failed to hash password when reset password for email: {}", email);
+            return false;
         }
 
         return true;
@@ -204,8 +251,130 @@ public class UserServiceImpl implements UserService {
         return true;
     }
 
+    /**
+     * 检查账号是否锁定
+     * @param email 邮箱地址
+     * @return 如果账号锁定返回 true，否则返回 false
+     */
     @Override
-    public String refreshToken(String token) {
-        return "";
+    public boolean isAccountLocked(String email) {
+        return userMapper.isAccountLocked(email);
+    }
+
+    public LocalDateTime getLockoutUntil(String email) {
+        return userMapper.getLockoutUntil(email);
+    }
+
+    @Override
+    public String getNewAccessToken(String refreshToken) throws AuthenticationExpiredException {
+        // 解析 token
+        DecodedJWT decodedJWT = jwtUtil.verifyToken(refreshToken);
+        String key = decodedJWT.getClaim("key").asString();
+        String tokenType = decodedJWT.getClaim("tokenType").asString();
+        String email = decodedJWT.getClaim("email").asString();
+        String userId = decodedJWT.getSubject();
+
+        // 检查 token 类型是否为 refresh
+        if (!"refresh".equals(tokenType)) {
+            throw new IllegalArgumentException("Invalid token type. Expected 'refresh'.");
+        }
+
+        // 检查 token 是否过期
+        if (redisUtil.isExpire(key)) {
+            throw new AuthenticationExpiredException("Refresh token has expired.");
+        }
+
+        // 创建新的 access token
+        Map<String, String> claims = new HashMap<>();
+        claims.put("email", email);
+        claims.put("tokenType", "access");
+
+        return jwtUtil.createToken(userId, claims, ACCESS_TOKEN_EXPIRE_TIME); // 15分钟过期
+    }
+
+    /**
+     * 生成新的 refresh token 的 key
+     *
+     * @param userId      用户 ID
+     * @param uniqueSuffix 唯一后缀（如 UUID 或时间戳）
+     * @return 生成的 Redis key
+     */
+    private String generateRefreshTokenKey(String userId, String uniqueSuffix) {
+        return REFRESH_TOKEN_KEY_PREFIX + userId + ":" + uniqueSuffix;
+    }
+
+    /**
+     * 使用合法且未过期的 refresh token 来获取新的 refresh token
+     * @param refreshToken 刷新令牌
+     * @return 新的刷新令牌
+     * @throws AuthenticationExpiredException
+     */
+    @Override
+    public String getNewRefreshToken(String refreshToken) throws AuthenticationExpiredException {
+        // 解析 token
+        DecodedJWT decodedJWT = jwtUtil.verifyToken(refreshToken);
+        String tokenType = decodedJWT.getClaim("tokenType").asString();
+        String email = decodedJWT.getClaim("email").asString();
+        String oldKey = decodedJWT.getClaim("key").asString();
+        String userId = decodedJWT.getSubject();
+
+        // 检查 token 类型是否为 refresh
+        if (!"refresh".equals(tokenType)) {
+            throw new IllegalArgumentException("Invalid token type. Expected 'refresh'.");
+        }
+
+        // 检查 token 是否过期
+        if (decodedJWT.getExpiresAt().before(new Date())) {
+            throw new AuthenticationExpiredException("Refresh token has expired.");
+        }
+
+        // 检查 token 是否被吊销
+        if (redisUtil.isExpire(oldKey)) {
+            throw new AuthenticationExpiredException("Refresh token has been revoked.");
+        }
+
+        // 删除旧的 refresh token
+        redisUtil.deleteString(oldKey);
+
+        // 创建新的 refresh token
+        Map<String, String> refreshClaims = new HashMap<>();
+        String uniqueSuffix = UUID.randomUUID().toString(); // 使用 UUID 生成唯一后缀
+        String newKey = generateRefreshTokenKey(userId, uniqueSuffix); // 生成 refresh token 的 key
+
+        refreshClaims.put("email", email);
+        refreshClaims.put("tokenType", "refresh");
+        refreshClaims.put("key", newKey);
+
+        String newRefreshToken = jwtUtil.createToken(userId, refreshClaims, REFRESH_TOKEN_EXPIRE_TIME);
+        logger.info("[GetNewRefreshToken] key: {}, email: {}, userId: {}", newKey, email, userId);
+
+        // 存储Refresh token到redis
+        redisUtil.setString(newKey, newRefreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
+
+        return newRefreshToken;
+    }
+
+    // 查询 refresh token 是否即将过期
+    public boolean isRefreshTokenExpiringSoon(String refreshToken) {
+        DecodedJWT decodedJWT = jwtUtil.verifyToken(refreshToken);
+        String key = decodedJWT.getClaim("key").asString();
+
+        long expireSeconds = redisUtil.getExpire(key);
+        return expireSeconds <= REFRESH_TOKEN_EXPIRING_SOON_THRESHOLD;
+    }
+
+    @Override
+    public void logout(String refreshToken) {
+        // 检查 refresh token 是否有效
+        DecodedJWT decodedJWT = jwtUtil.verifyToken(refreshToken);
+        String oldKey = decodedJWT.getClaim("key").asString();
+        boolean isExpire = redisUtil.isExpire(oldKey);
+
+        if(isExpire) {
+            logger.warn("[Logout] Refresh token has expired or has been revoked.");
+        } else {
+            // 删除 refresh token
+            redisUtil.deleteString(oldKey);
+        }
     }
 }

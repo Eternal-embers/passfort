@@ -41,6 +41,9 @@ public interface UserMapper {
     @Select("SELECT lockout_until from users WHERE email = #{email}")
     LocalDateTime getLockoutUntil(@Param("email") String email);
 
+    @Select("SELECT * FROM users WHERE user_id = #{userId}")
+    User getUserById(@Param("userId") Integer userId);
+
     /**
      * 根据邮箱获取用户信息
      * @param email 邮箱地址
@@ -62,6 +65,21 @@ public interface UserMapper {
      */
     @Update("UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE email = #{email}")
     void incrementFailedLoginAttempts(@Param("email") String email);
+
+    /**
+     * 获取用户的失败登录次数
+     * @param email 邮箱地址
+     * @return 失败登录次数
+     */
+    @Select("SELECT failed_login_attempts FROM users WHERE email = #{email}")
+    Integer getFailedLoginAttempts(@Param("email") String email);
+
+    /**
+     * 重置用户的失败登录次数
+     * @param email 邮箱地址
+     */
+    @Update("UPDATE users SET failed_login_attempts = 0 WHERE email = #{email}")
+    void resetFailedLoginAttempts(@Param("email") String email);
 
     /**
      * 锁定账户

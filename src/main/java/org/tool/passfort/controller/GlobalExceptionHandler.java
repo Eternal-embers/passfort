@@ -2,7 +2,7 @@ package org.tool.passfort.controller;
 
 import org.springframework.web.bind.annotation.*;
 import org.tool.passfort.exception.*;
-import org.tool.passfort.model.ApiResponse;
+import org.tool.passfort.dto.ApiResponse;
 
 import org.springframework.http.HttpStatus;
 
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccountLockedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiResponse handleAccountLockedException(AccountLockedException e) {
-        return ApiResponse.failure(403, e.getMessage());
+        return ApiResponse.failure(403, e.getMessage(), e.lockoutUntil);
     }
 
     @ExceptionHandler(VerifyPasswordFailedException.class)
@@ -54,13 +54,31 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PasswordInvalidException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse  handlePasswordInvalidException(PasswordInvalidException e) {
-        return ApiResponse.failure(401, e.getMessage());
+        return ApiResponse.failure(401, e.getMessage(), e.getFailedLoginAttempts());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse handleUnauthorizedException(UnauthorizedException e) {
+        return ApiResponse.failure(403, e.getMessage());
+    }
+
+    @ExceptionHandler(PasswordRepeatException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handlePasswordRepeatException(PasswordRepeatException e) {
+        return ApiResponse.failure(400, e.getMessage());
+    }
+
+    @ExceptionHandler(AuthenticationExpiredException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse handleAuthenticationExpiredException(AuthenticationExpiredException e) {
+        return ApiResponse.failure(401, e.getMessage(), "Expired");
     }
 
     // 捕获所有未明确处理的异常
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse handleException(Exception e) {
-        return ApiResponse.failure(500, "Internal Server Error: " + e.getMessage());
+        return ApiResponse.failure(500, "Unexpected error occurred: " + e.getMessage());
     }
 }

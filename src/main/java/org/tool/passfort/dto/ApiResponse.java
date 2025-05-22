@@ -1,4 +1,4 @@
-package org.tool.passfort.model;
+package org.tool.passfort.dto;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -43,6 +43,10 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> failure(int code, String msg) {
         return new ApiResponse<>(code, msg);
+    }
+
+    public static <T> ApiResponse<T> failure(int code, String msg, T data) {
+        return new ApiResponse<>(code, msg, data);
     }
 
     // 获取当前时间戳的方法

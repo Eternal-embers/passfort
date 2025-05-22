@@ -52,6 +52,19 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
 
+  # redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: redis_passfort
+      database: 0
+      lettuce:
+        pool:
+          max-idle: 16  # 最大空闲连接数
+          max-active: 32  # 最大活跃连接数
+          min-idle: 8  # 最小空闲连接数
+
 # MyBatis配置
 mybatis:
   type-aliases-package: org.tool.passfort.model # 实体类包路径

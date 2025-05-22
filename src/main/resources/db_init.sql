@@ -16,7 +16,6 @@ CREATE TABLE users (
    last_login_at DATETIME DEFAULT NULL, -- 最后一次登录时间
    failed_login_attempts INT DEFAULT 0, -- 连续失败的登录尝试次数
    lockout_until DATETIME DEFAULT NULL, -- 账户锁定时间
-   is_admin TINYINT(1) DEFAULT 0, -- 是否为管理员（0：普通用户，1：管理员）
    last_password_update DATETIME DEFAULT CURRENT_TIMESTAMP -- 上一次密码更新时间
 );
 

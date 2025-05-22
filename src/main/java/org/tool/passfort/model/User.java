@@ -18,6 +18,5 @@ public class User {
     private LocalDateTime lastLoginAt; // 最后一次登录时间
     private Integer failedLoginAttempts; // 连续失败的登录尝试次数
     private LocalDateTime lockoutUntil; // 账户锁定时间
-    private Boolean isAdmin; // 是否为管理员（0：普通用户，1：管理员）
     private LocalDateTime lastPasswordUpdate; // 上一次更新时间
 }
