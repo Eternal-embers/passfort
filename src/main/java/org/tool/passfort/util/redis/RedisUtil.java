@@ -136,7 +136,7 @@ public class RedisUtil {
      * 获取键的剩余过期时间
      *
      * @param key 键
-     * @return 剩余时间（秒）
+     * @return 剩余时间（秒），如果键不存在返回 -1, 如果键没有设置过期时间返回 -2
      */
     public Long getExpire(String key) {
         return stringRedisTemplate.getExpire(key, TimeUnit.SECONDS);

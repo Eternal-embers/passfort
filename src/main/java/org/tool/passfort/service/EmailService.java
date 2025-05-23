@@ -34,4 +34,6 @@ public interface EmailService {
     void sendEmailWithTemplate(String to, String subject, String templatePath, Object templateVariables);
 
     String loadTemplate(String templatePath, Object templateVariables);
+
+    boolean isValidEmail(String email);
 }

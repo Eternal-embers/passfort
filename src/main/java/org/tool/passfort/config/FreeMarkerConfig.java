@@ -1,5 +1,6 @@
 package org.tool.passfort.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer;
 
@@ -10,6 +11,7 @@ import java.util.Map;
 
 @Configuration
 public class FreeMarkerConfig {
+    @Bean
     public FreeMarkerConfigurer freeMarkerConfigurer(){
         FreeMarkerConfigurer configurer = new FreeMarkerConfigurer();
 

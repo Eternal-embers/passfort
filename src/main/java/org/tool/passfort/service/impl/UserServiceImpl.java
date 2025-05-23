@@ -173,6 +173,23 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public void verify(String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException {
+        //检查 codeKey 是否过期
+        boolean isExpire = redisUtil.isExpire(codeKey);
+        if(isExpire) {
+            logger.error("verification code expired for codeKey: {}", codeKey);
+            throw new VerificationCodeExpireException("Verification code expired");
+        }
+
+
+        //检查验证码是否正确
+        if (!code.equals(redisUtil.getString(codeKey))) {
+            logger.error("verification code error for codeKey: {}", codeKey);
+            throw new VerificationCodeErrorException("Verification code error");
+        }
+    }
+
 
     /**
      * 重置用户密码
@@ -363,6 +380,10 @@ public class UserServiceImpl implements UserService {
         return expireSeconds <= REFRESH_TOKEN_EXPIRING_SOON_THRESHOLD;
     }
 
+    /**
+     * 注销用户，删除 refresh token
+     * @param refreshToken
+     */
     @Override
     public void logout(String refreshToken) {
         // 检查 refresh token 是否有效
@@ -376,5 +397,15 @@ public class UserServiceImpl implements UserService {
             // 删除 refresh token
             redisUtil.deleteString(oldKey);
         }
+    }
+
+    //查询帐号是否开启双重认证，默认开启
+    public boolean isTwoFactorAuthEnabled(String email) {
+        return userMapper.isTwoFactorAuthEnabled(email);
+    }
+
+    @Override
+    public int getUserId(String email) {
+        return userMapper.getUserId(email);
     }
 }

@@ -8,6 +8,9 @@ import java.time.LocalDateTime;
 public interface UserService {
     void registerUser(String email, String password) throws PasswordHashingException, DatabaseOperationException, EmailAlreadyRegisteredException;
     LoginResponse loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException;
+
+    void verify(String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException;
+
     boolean resetPassword(String email, String newPassword) throws PasswordRepeatException;
     boolean activateUser(String email);
     boolean lockAccount(String email, LocalDateTime lockoutUntil);
@@ -23,5 +26,9 @@ public interface UserService {
     boolean isRefreshTokenExpiringSoon(String refreshToken);
 
     void logout(String refreshToken);
+
+    boolean isTwoFactorAuthEnabled(String email);
+
+    int getUserId(String email);
 }
 

@@ -79,6 +79,10 @@ public class GlobalExceptionHandler {
         return ApiResponse.failure(401, e.getMessage(), "Expired");
     }
 
+    public ApiResponse handleVerificationCodeErrorException(VerificationCodeErrorException e) {
+        return ApiResponse.failure(400, e.getMessage(), "VerificationCodeError");
+    }
+
     // 捕获所有未明确处理的异常
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)

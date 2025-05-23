@@ -16,7 +16,8 @@ CREATE TABLE users (
    last_login_at DATETIME DEFAULT NULL, -- 最后一次登录时间
    failed_login_attempts INT DEFAULT 0, -- 连续失败的登录尝试次数
    lockout_until DATETIME DEFAULT NULL, -- 账户锁定时间
-   last_password_update DATETIME DEFAULT CURRENT_TIMESTAMP -- 上一次密码更新时间
+   last_password_update DATETIME DEFAULT CURRENT_TIMESTAMP, -- 上一次密码更新时间
+   is_two_factor_auth_enabled TINYINT(1) DEFAULT 1 -- 是否开启双重认证（0：未开启，1：已开启）
 );
 
 -- 创建第三方登录关联表，存储用户与第三方登录方式的关联信息

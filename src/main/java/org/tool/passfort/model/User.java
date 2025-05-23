@@ -19,4 +19,5 @@ public class User {
     private Integer failedLoginAttempts; // 连续失败的登录尝试次数
     private LocalDateTime lockoutUntil; // 账户锁定时间
     private LocalDateTime lastPasswordUpdate; // 上一次更新时间
+    private Boolean isTwoFactorAuthEnabled; // 是否开启双重认证
 }

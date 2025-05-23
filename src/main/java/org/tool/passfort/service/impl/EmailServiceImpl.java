@@ -230,4 +230,10 @@ public class EmailServiceImpl implements EmailService {
             throw new RuntimeException(e);
         }
     }
+
+    public boolean isValidEmail(String email) {
+        // 使用 Apache Commons Validator 验证邮箱格式
+
+        return true;
+    }
 }

@@ -111,4 +111,12 @@ public interface UserMapper {
      */
     @Update("UPDATE users SET password_hash = #{passwordHash}, last_password_update = NOW() WHERE email = #{email}")
     void resetPassword(@Param("email") String email, @Param("passwordHash") byte[] passwordHash);
+
+    //是否开启双重认证
+    @Select("SELECT is_two_factor_auth_enabled FROM users WHERE email = #{email}")
+    public  boolean isTwoFactorAuthEnabled(@Param("email") String email);
+
+    //获取用户id
+    @Select("SELECT user_id FROM users WHERE email = #{email}")
+    public Integer getUserId(@Param("email") String email);
 }

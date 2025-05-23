@@ -26,7 +26,7 @@ public class WebConfig implements WebMvcConfigurer {
                 "/api/user/new_access_token",  //获取新的 access token
                 "/api/user/new_refresh_token",  //获取新的 refresh token
                 "/api/user/refresh_token_expiring_soon", //查询 refresh token 是否即将过期
-                "/api/email/verify" // 邮箱验证
+                "/api/mail/verify" // 邮箱验证
         };
 
         registry.addInterceptor(jwtAuthenticationInterceptor)

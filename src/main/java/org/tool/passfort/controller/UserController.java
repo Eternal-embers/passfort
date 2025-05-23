@@ -11,6 +11,7 @@ import org.tool.passfort.dto.LoginResponse;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.dto.ApiResponse;
 import org.tool.passfort.util.jwt.JwtUtil;
+import org.tool.passfort.util.redis.RedisUtil;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -25,14 +26,22 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    private final RedisUtil redisUtil;
 
     @Autowired
-    public UserController(UserService userService, JwtUtil jwtUtil) {
+    public UserController(UserService userService, JwtUtil jwtUtil, RedisUtil redisUtil) {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
+        this.redisUtil = redisUtil;
     }
 
-    //注册
+    /**
+     * 注册用户
+     * @param request 请求中需要包含 email, password
+     * @throws DatabaseOperationException 数据库操作异常
+     * @throws PasswordHashingException 密码哈希异常
+     * @throws EmailAlreadyRegisteredException 邮箱已注册
+     */
     @PostMapping("/register")
     public ApiResponse register(@RequestBody Map<String, String> request) throws DatabaseOperationException, PasswordHashingException, EmailAlreadyRegisteredException {
         String email = request.get("email");
@@ -53,13 +62,33 @@ public class UserController {
         return ApiResponse.success("Activate " + email + " success");
     }
 
-    //登录
+    /**
+     * 用户登录
+     * @param request 请求中需要包含 email, password, 如果开启了双重认证则还需要包含 code, codeKey
+     * @return 返回数据包括 access token, refresh token的信息和用户信息
+     * @throws UserNotFoundException 用户不存在
+     * @throws AccountLockedException 用户被冻结
+     * @throws VerifyPasswordFailedException 密码验证程序出现错误
+     * @throws AccountNotActiveException 用户未激活
+     * @throws PasswordInvalidException 密码无效
+     * @throws VerificationCodeErrorException 验证码错误
+     * @throws VerificationCodeExpireException 验证码过期
+     */
     @PostMapping("/login")
-    public ApiResponse login(@RequestBody Map<String, String> request) throws UserNotFoundException, AccountLockedException, VerifyPasswordFailedException, AccountNotActiveException, PasswordInvalidException {
+    public ApiResponse login(@RequestBody Map<String, String> request) throws UserNotFoundException, AccountLockedException, VerifyPasswordFailedException, AccountNotActiveException, PasswordInvalidException, VerificationCodeErrorException, VerificationCodeExpireException {
         String email = request.get("email");
         String password = request.get("password");
+        String code = request.get("code");
+        String codeKey = request.get("codeKey");
 
+        // 验证密码
         LoginResponse loginResponse = userService.loginUser(email, password);
+
+        // 默认开启双重认证 - 邮箱验证
+        boolean isTwoFactorAuthEnabled = userService.isTwoFactorAuthEnabled(email);
+        if (isTwoFactorAuthEnabled) {
+            userService.verify(code, codeKey);
+        }
 
         return ApiResponse.success(loginResponse);
     }
@@ -94,6 +123,9 @@ public class UserController {
      * 重置密码, 冻结的账户仍然可以重置密码
      * @param request 请求对象
      * @param data 包含 email 和 newPassword 两个字段
+     * @return 返回重置密码的结果
+     * @throws UnauthorizedException 非法操作，使用合法token尝试修改其他人的密码会触发此异常
+     * @throws PasswordRepeatException 新密码与旧密码相同
      */
     @PostMapping("/reset_password")
     public ApiResponse resetPassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws UnauthorizedException, PasswordRepeatException {
@@ -145,7 +177,12 @@ public class UserController {
         return ApiResponse.success("Logout success");
     }
 
-    // 获取新的 access token
+    /**
+     * 获取新的 access token
+     * @param request 请求对象，需要在 Authorization 头部携带 refresh token
+     * @return 返回新的 access token
+     * @throws AuthenticationExpiredException 刷新令牌已过期
+     */
     @PostMapping("/new_access_token")
     public ApiResponse getNewAccessToken(HttpServletRequest request) throws AuthenticationExpiredException {
         String refreshToken = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
@@ -154,7 +191,12 @@ public class UserController {
         return ApiResponse.success(newAccessToken);
     }
 
-    // 获取新的 refresh token
+    /**
+     * 获取新的 refresh token
+     * @param request 请求对象，需要在 Authorization 头部携带 refresh token
+     * @return 返回新的 refresh token
+     * @throws AuthenticationExpiredException 刷新令牌已过期
+     */
     @PostMapping("/new_refresh_token")
     public ApiResponse getNewRefreshToken(HttpServletRequest request) throws AuthenticationExpiredException {
         String refreshToken = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
