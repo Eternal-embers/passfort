@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系统信息</title>
+    <title>app v1.0</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -76,6 +76,7 @@
             <li><span>CPU信息：</span><span th:text="${cpuInfo}"></span></li>
             <li><span>运行时长：</span><span th:text="${uptime}"></span></li>
             <li><span>数据库：</span><span th:text="${dbVersion}"></span></li>
+            <li><span>Redis: </span><span th:text="${redisVersion}"></span></li>
         </ul>
     </div>
 </div>

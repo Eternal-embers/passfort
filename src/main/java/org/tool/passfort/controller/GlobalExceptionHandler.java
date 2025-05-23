@@ -1,5 +1,7 @@
 package org.tool.passfort.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.tool.passfort.exception.*;
 import org.tool.passfort.dto.ApiResponse;
@@ -9,6 +11,8 @@ import org.springframework.http.HttpStatus;
 @ControllerAdvice
 @ResponseBody
 public class GlobalExceptionHandler {
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(DatabaseOperationException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse handleDatabaseOperationException(DatabaseOperationException e) {
@@ -79,6 +83,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse handleException(Exception e) {
+        // 打印异常类型、异常消息和堆栈跟踪的首行
+        logger.error("Unhandled exception: {} - {} - {}", e.getClass().getName(), e.getMessage(), e.getStackTrace()[0].toString());
         return ApiResponse.failure(500, "Unexpected error occurred: " + e.getMessage());
     }
 }

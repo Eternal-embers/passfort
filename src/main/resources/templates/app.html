@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应用信息</title>
+    <style>
+        /* 重置默认样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f9f9f9;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        td {
+            color: #555;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            table {
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.2em;
+            }
+
+            table {
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>passfort</h1>
+    <table>
+        <tr>
+            <th>操作系统信息</th>
+            <td>${osInfo}</td>
+        </tr>
+        <tr>
+            <th>CPU信息</th>
+            <td>${cpuInfo}</td>
+        </tr>
+        <tr>
+            <th>数据库版本</th>
+            <td>${databaseVersion}</td>
+        </tr>
+        <tr>
+            <th>Redis版本</th>
+            <td>${redisVersion}</td>
+        </tr>
+    </table>
+    <div class="footer">
+        <p>此邮件由系统自动发送，请勿直接回复。</p>
+    </div>
+</div>
+</body>
+</html>

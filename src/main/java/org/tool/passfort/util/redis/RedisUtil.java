@@ -1,21 +1,26 @@
 package org.tool.passfort.util.redis;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class RedisUtil {
     private final StringRedisTemplate stringRedisTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final LettuceConnectionFactory lettuceConnectionFactory;
 
     @Autowired
-    public RedisUtil(StringRedisTemplate stringRedisTemplate, RedisTemplate<String, Object> redisTemplate){
+    public RedisUtil(StringRedisTemplate stringRedisTemplate, RedisTemplate<String, Object> redisTemplate, LettuceConnectionFactory lettuceConnectionFactory){
         this.stringRedisTemplate = stringRedisTemplate;
         this.redisTemplate = redisTemplate;
+        this.lettuceConnectionFactory = lettuceConnectionFactory;
     }
 
     // =============================String操作================================
@@ -143,5 +148,20 @@ public class RedisUtil {
      */
     public boolean isExpire(String key) {
         return stringRedisTemplate.hasKey(key) && stringRedisTemplate.getExpire(key, TimeUnit.SECONDS) <= 0;
+    }
+
+    /**
+     * 获取 Redis 版本
+     *
+     * @return Redis 版本
+     */
+    public String getVersion() {
+        try (RedisConnection connection = lettuceConnectionFactory.getConnection()) {
+            Properties info = connection.serverCommands().info("SERVER");
+            if (info == null) return "Unknown";
+            String version = info.getProperty("redis_version");
+            if (version == null) return "Unknown";
+            return "Version " + version;
+        }
     }
 }
