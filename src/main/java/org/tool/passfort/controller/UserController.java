@@ -11,7 +11,6 @@ import org.tool.passfort.dto.LoginResponse;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.dto.ApiResponse;
 import org.tool.passfort.util.jwt.JwtUtil;
-import org.tool.passfort.util.redis.RedisUtil;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -26,13 +25,11 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
     private final JwtUtil jwtUtil;
-    private final RedisUtil redisUtil;
 
     @Autowired
-    public UserController(UserService userService, JwtUtil jwtUtil, RedisUtil redisUtil) {
+    public UserController(UserService userService, JwtUtil jwtUtil) {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
-        this.redisUtil = redisUtil;
     }
 
     /**

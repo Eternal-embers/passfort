@@ -9,8 +9,8 @@ import java.security.SecureRandom;
 
 public class AesUtil {
     private static final String AES_CBC_PKCS5_PADDING = "AES/CBC/PKCS5Padding";
-    private static final int KEY_SIZE = 256; // 密钥长度
-    private static final int IV_SIZE = 128; // IV长度
+    private static final int KEY_SIZE = 256; // 密钥长度， 256位=32字节
+    private static final int IV_SIZE = 128; // IV长度，128位=16字节
     private static final String algorithm = "AES";
 
     /**
