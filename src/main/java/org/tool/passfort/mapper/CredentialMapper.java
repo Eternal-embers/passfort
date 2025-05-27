@@ -8,8 +8,17 @@ import java.util.List;
 @Mapper
 public interface CredentialMapper {
     // 创建凭证
-    int createCredential(@Param("userId") Integer userId, @Param("encryptionId") Integer encryptionId,
+    Integer createCredential(@Param("userId") Integer userId, @Param("encryptionId") Integer encryptionId,
                          @Param("platform") String platform, @Param("account") String account);
+
+    // 根据凭证 ID 查询凭证
+    Credential queryCredentialById(@Param("credentialId") Integer credentialId);
+
+    // 根据凭证加密信息 ID 查询用户ID
+    Integer queryUserIdByEncryptionId(@Param("encryptionId") Integer encryptionId);
+
+    // 获取所有的平台名称
+    List<String> getAllPlatforms(@Param("userId") Integer userId);
 
     // 查询凭证
     List<Credential> queryCredential(@Param("userId") Integer userId, @Param("platform") String platform,

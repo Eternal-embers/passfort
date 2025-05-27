@@ -13,6 +13,7 @@ public class User {
     private Integer userId; // 用户唯一标识，主键，自动递增
     private String email; // 邮箱地址（唯一，用于邮箱注册）
     private byte[] passwordHash; // 密码哈希（存储哈希值和盐值的组合）
+    private byte[] permissionHash; //权限口令的哈希值（存储哈希值和盐值的组合）
     private LocalDateTime createdAt; // 注册时间
     private Boolean isActive; // 账户是否激活（0：未激活，1：已激活）
     private LocalDateTime lastLoginAt; // 最后一次登录时间

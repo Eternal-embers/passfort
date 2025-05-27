@@ -6,8 +6,8 @@ import org.tool.passfort.model.CredentialEncryption;
 
 @Mapper
 public interface CredentialEncryptionMapper {
-    // 创建加密信息
-    void createCredentialEncryption(@Param("iv") byte[] iv,
+    // 创建加密信息, 返回主键id
+    Integer createCredentialEncryption(@Param("iv") byte[] iv,
                                     @Param("secretKey") byte[] secretKey,
                                     @Param("encryptedPassword") byte[] encryptedPassword);
 

@@ -11,6 +11,7 @@ CREATE TABLE users (
    user_id INT AUTO_INCREMENT PRIMARY KEY, -- 用户唯一标识，主键，自动递增
    email VARCHAR(128) UNIQUE DEFAULT NULL, -- 邮箱地址（唯一，用于邮箱注册）
    password_hash VARBINARY(128) NOT NULL, -- 密码哈希（存储哈希值和盐值的组合）
+   permission_hash VARBINARY(128) DEFAULT NULL, -- 权限口令哈希（存储权限口令的哈希值）
    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 注册时间
    is_active TINYINT(1) DEFAULT 0, -- 账户是否激活（0：未激活，1：已激活）
    last_login_at DATETIME DEFAULT NULL, -- 最后一次登录时间

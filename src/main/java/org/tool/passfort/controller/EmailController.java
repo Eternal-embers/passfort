@@ -1,6 +1,5 @@
 package org.tool.passfort.controller;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
