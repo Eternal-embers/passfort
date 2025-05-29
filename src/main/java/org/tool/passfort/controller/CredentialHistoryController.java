@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.tool.passfort.dto.ApiResponse;
-import org.tool.passfort.model.Credential;
-import org.tool.passfort.service.CredentialService;
+import org.tool.passfort.model.CredentialHistory;
+import org.tool.passfort.service.CredentialHistoryService;
 import org.tool.passfort.service.EmailService;
 import org.tool.passfort.util.encrypt.AesUtil;
 import org.tool.passfort.util.encrypt.ShuffleEncryption;
@@ -24,9 +24,9 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/credential")
-public class CredentialController {
-    private final CredentialService credentialService;
+@RequestMapping("/api/credential_history")
+public class CredentialHistoryController {
+    private final CredentialHistoryService credentialHistoryService;
     private final AesUtil aesUtil;
     private final EmailService emailService;
 
@@ -34,36 +34,37 @@ public class CredentialController {
     private final static int[] SHUFFLE_ORDER = {7, 2, 5, 0, 3, 6, 1, 4};
 
     @Autowired
-    public CredentialController(CredentialService credentialService, AesUtil aesUtil, EmailService emailService) {
-        this.credentialService = credentialService;
+    public CredentialHistoryController(CredentialHistoryService credentialHistoryService, AesUtil aesUtil, EmailService emailService) {
+        this.credentialHistoryService = credentialHistoryService;
         this.aesUtil = aesUtil;
         this.emailService = emailService;
     }
 
-    @PostMapping("/add")
-    public ApiResponse addCredential(HttpServletRequest request, @RequestBody Map<String, String> data) throws Exception {
-        String userId = (String) request.getAttribute("userId");
-        String platform = data.get("platform");
-        String account = data.get("account");
-        String password = data.get("password");
-        Credential credential = credentialService.createCredential(Integer.parseInt(userId), platform, account, password);
-
-        return ApiResponse.success(credential);
-    }
-
+    /**
+     * 获取指定凭证的所有历史变更记录
+     * @param request 请求体中需要包含 userId 和 credentialId
+     * @return 指定凭证的所有历史记录
+     */
     @PostMapping("/get")
-    public ApiResponse getCredentials(HttpServletRequest request) {
+    public ApiResponse getAccountHistory(HttpServletRequest request, @RequestBody Map<String, String> data) {
         String userId = (String) request.getAttribute("userId");
-        List<Credential> credentials = credentialService.queryCredential(Integer.parseInt(userId), null, null, true);
+        int credentialId = Integer.parseInt(data.get("credentialId"));
+        List<CredentialHistory> credentialHistories = credentialHistoryService.getAccountHistory(Integer.parseInt(userId), credentialId);
 
-        return ApiResponse.success(credentials);
+        return ApiResponse.success(credentialHistories);
     }
 
+    /**
+     * 获取指定历史记录的密码
+     * @param request 请求体中需要包含 userId 和 historyId
+     * @return
+     * @throws Exception
+     */
     @PostMapping("/view")
-    public ApiResponse viewPassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws Exception {
+    public ApiResponse getPassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws Exception {
         String userId = (String) request.getAttribute("userId");
-        String encryptionId = data.get("encryptionId");
-        String password = credentialService.getPassword(Integer.valueOf(userId), Integer.valueOf(encryptionId));
+        int historyId = Integer.parseInt(data.get("historyId"));
+        String password = credentialHistoryService.getPassword(Integer.parseInt(userId), historyId);
 
         // 对密码进行混淆加密
         byte[] encryptedPassword = aesUtil.encrypt(password);//iv, key, encryptedPassword的组合, 64字节
@@ -75,15 +76,15 @@ public class CredentialController {
     /**
      * 发送邮件，邮件中包含密码信息的二维码
      * @param request 请求对象
-     * @param data 请求体中需要包含 encryptionId
+     * @param data 请求体中需要包含 historyId
      * @return 返回信息 ID
      */
     @PostMapping("/view/qr")
     public ApiResponse viewPasswordQR(HttpServletRequest request, @RequestBody Map<String, String> data) throws Exception {
         String userId = (String) request.getAttribute("userId");
         String email = (String) request.getAttribute("email");
-        String encryptionId = data.get("encryptionId");
-        String password = credentialService.getPassword(Integer.valueOf(userId), Integer.valueOf(encryptionId));// 获取密码
+        String historyId = data.get("historyId");
+        String password = credentialHistoryService.getPassword(Integer.valueOf(userId), Integer.valueOf(historyId));// 获取密码
 
         // 收集请求信息用于邮件提示
         String ipAddress = request.getRemoteAddr();
@@ -107,32 +108,29 @@ public class CredentialController {
         return ApiResponse.success(infoId);
     }
 
-    @PostMapping("/update/account")
-    public ApiResponse updateAccount(@RequestBody Map<String, String> data) {
-        String credentialId = data.get("credentialId");
-        String newAccount = data.get("newAccount");
-
-        credentialService.updateAccount(Integer.parseInt(credentialId), newAccount);
-
-        return ApiResponse.success("Update account success");
-    }
-
-    @PostMapping("/update/password")
-    public ApiResponse updatePassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws Exception {
+    /**
+     * 删除指定的某个历史记录
+     * @param request 请求体中需要包含 userId 和 historyId
+     * @return 删除历史记录的结果
+     */
+    @PostMapping("/delete")
+    public ApiResponse deleteAccountHistory(HttpServletRequest request, @RequestBody Map<String, String> data) {
         String userId = (String) request.getAttribute("userId");
-        String credentialId = data.get("credentialId");
-        String newPassword = data.get("newPassword");
+        int historyId = Integer.parseInt(data.get("historyId"));
 
-        int encryptionId = credentialService.updatePassword(Integer.parseInt(userId), Integer.parseInt(credentialId), newPassword);
+        credentialHistoryService.deleteAccountHistory(Integer.parseInt(userId), historyId);
 
-        return ApiResponse.success(encryptionId);
+        return ApiResponse.success("Delete history[id: " + historyId + "] success");
     }
 
-    @PostMapping("/update/valid")
-    public ApiResponse updateValid(@RequestBody Map<String, String> data) {
+    @PostMapping("/delete/before")
+    public ApiResponse deleteAccountHistoryBefore(HttpServletRequest request, @RequestBody Map<String, String> data) {
+        String userId = (String) request.getAttribute("userId");
         int credentialId = Integer.parseInt(data.get("credentialId"));
-        int valid = Integer.parseInt(data.get("valid"));
-        credentialService.updateValid(credentialId, valid == 1);
-        return ApiResponse.success("Update valid success");
+        LocalDateTime createdAt = LocalDateTime.parse(data.get("createdAt"));
+
+        credentialHistoryService.deleteAccountHistory(Integer.parseInt(userId), credentialId, createdAt);
+
+        return ApiResponse.success("Delete history[credentialId: " + credentialId + "] before " + createdAt + " success");
     }
 }

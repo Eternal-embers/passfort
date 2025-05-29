@@ -173,6 +173,13 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    /**
+     * 检查验证码是否正确
+     * @param code 验证码
+     * @param codeKey redis key
+     * @throws VerificationCodeExpireException 验证码过期
+     * @throws VerificationCodeErrorException 验证码错误
+     */
     @Override
     public void verify(String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException {
         //检查 codeKey 是否过期
@@ -278,10 +285,17 @@ public class UserServiceImpl implements UserService {
         return userMapper.isAccountLocked(email);
     }
 
+    //获取账号锁定截止时间
     public LocalDateTime getLockoutUntil(String email) {
         return userMapper.getLockoutUntil(email);
     }
 
+    /**
+     * 使用合法且未过期的 refresh token 来获取新的 access token
+     * @param refreshToken 刷新令牌
+     * @return 新的访问令牌
+     * @throws AuthenticationExpiredException 刷新令牌已过期
+     */
     @Override
     public String getNewAccessToken(String refreshToken) throws AuthenticationExpiredException {
         // 解析 token

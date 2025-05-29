@@ -6,6 +6,8 @@ import javax.crypto.SecretKey;
 import java.util.Base64;
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public class AesUtilTest {
     private AesUtil aesUtil;
 
@@ -18,7 +20,7 @@ public class AesUtilTest {
         // 测试生成AES密钥
         SecretKey key = aesUtil.generateAesKey();
         Assertions.assertNotNull(key, "生成的AES密钥不能为空");
-        Assertions.assertEquals(256, key.getEncoded().length * 8, "AES密钥长度应为256位");
+        assertEquals(256, key.getEncoded().length * 8, "AES密钥长度应为256位");
     }
 
     @Test
@@ -35,7 +37,7 @@ public class AesUtilTest {
         // 测试生成IV
         byte[] iv = aesUtil.generateIv();
         Assertions.assertNotNull(iv, "生成的IV不能为空");
-        Assertions.assertEquals(16, iv.length, "IV长度应为16字节");
+        assertEquals(16, iv.length, "IV长度应为16字节");
     }
 
     @Test
@@ -49,11 +51,13 @@ public class AesUtilTest {
         String decryptedData = aesUtil.decrypt(encryptedData, iv, key);
 
         Assertions.assertNotEquals(originalData, Base64.getEncoder().encodeToString(encryptedData), "加密后的数据应与原始数据不同");
-        Assertions.assertEquals(originalData, decryptedData, "解密后的数据应与原始数据一致");
+        assertEquals(originalData, decryptedData, "解密后的数据应与原始数据一致");
     }
 
     @Test
     public void testEncryptionDecryptionPerformance() throws Exception {
+        System.out.println("================ AES encrypt and decrypt test(basic) ================");
+
         // 测试性能
         String largeData = generateLargeData(1024 * 1024); // 生成1MB的测试数据
         SecretKey key = aesUtil.generateAesKey();
@@ -67,10 +71,10 @@ public class AesUtilTest {
         String decryptedData = aesUtil.decrypt(encryptedData, iv, key);
         long decryptionTime = System.currentTimeMillis() - startTime;
 
-        Assertions.assertEquals(largeData, decryptedData, "解密后的数据应与原始数据一致");
+        assertEquals(largeData, decryptedData, "解密后的数据应与原始数据一致");
 
-        System.out.println("加密耗时: " + encryptionTime + " ms");
-        System.out.println("解密耗时: " + decryptionTime + " ms");
+        System.out.println("Encryption time for 1MB data: " + encryptionTime + " ms");
+        System.out.println("Decryption time for 1MB data: " + decryptionTime + " ms");
     }
 
     private String generateLargeData(int size) {
@@ -81,5 +85,28 @@ public class AesUtilTest {
             sb.append((char) ('a' + random.nextInt(26)));
         }
         return sb.toString();
+    }
+
+    @Test
+    public void testCombinedEncryptDecrypt() throws Exception {
+        System.out.println("================ AES encrypt and decrypt test(combined) ================");
+
+        // 测试数据
+        String originalData = generateLargeData(1024); // 1KB 数据
+
+        // 测试加密性能
+        long startTime = System.currentTimeMillis();
+        byte[] encryptedData = aesUtil.encrypt(originalData);
+        long endTime = System.currentTimeMillis();
+        System.out.println("Encryption time for 1KB data: " + (endTime - startTime) + " ms");
+
+        // 测试解密性能
+        startTime = System.currentTimeMillis();
+        String decryptedData = aesUtil.decrypt(encryptedData);
+        endTime = System.currentTimeMillis();
+        System.out.println("Decryption time for 1KB data: " + (endTime - startTime) + " ms");
+
+        // 验证解密后的数据是否与原始数据一致
+        assertEquals(originalData, decryptedData, "Decrypted data should match the original data");
     }
 }

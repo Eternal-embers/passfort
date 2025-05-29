@@ -23,7 +23,7 @@ public interface CredentialService {
      * @param valid 是否有效
      * @return 凭证列表
      */
-    List<Credential> queryCredential(Integer userId, String platform, String account, Boolean valid);
+    List<Credential> queryCredential(int userId, String platform, String account, boolean valid);
 
     /**
      * 根据加密信息 ID 获取密码
@@ -31,5 +31,27 @@ public interface CredentialService {
      * @param encryptionId 加密信息 ID
      * @return 密码明文
      */
-    String getPassword(Integer userId, Integer encryptionId) throws Exception;
+    String getPassword(int userId, int encryptionId) throws Exception;
+
+    /**
+     * 更新账号
+     * @param credentialId 凭证 ID
+     * @param newAccount 新的账号
+     */
+    void updateAccount(int credentialId, String newAccount);
+
+    /**
+     * 更新密码
+     * @param credentialId 凭证 ID
+     * @param newPassword 新的密码
+     * @return 新的加密信息 ID
+     */
+    int updatePassword(int userId, int credentialId, String newPassword) throws Exception;
+
+    /**
+     * 更新凭证有效性
+     * @param credentialId 凭证 ID
+     * @param valid 是否有效
+     */
+    void updateValid(int credentialId, boolean valid);
 }

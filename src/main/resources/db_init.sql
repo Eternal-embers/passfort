@@ -63,24 +63,15 @@ CREATE TABLE credential (
 CREATE TABLE credential_history (
     history_id INT
         AUTO_INCREMENT PRIMARY KEY, -- 历史记录的唯一标识，自增主键
+    credential_id INT NOT NULL, -- 凭证ID
     user_id INT NOT NULL, -- 关联用户表的用户 ID
     encryption_id INT NOT NULL, -- 关联凭证加密表的加密信息 ID
     platform VARCHAR(255) NOT NULL, -- 凭证所属的平台（如网站或应用名称）
     account VARCHAR(255) NOT NULL, -- 用户在该平台上的账号
+    operation_type VARCHAR(20) NOT NULL, -- 操作类型
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- 历史记录的创建时间，默认为当前时间
+    FOREIGN KEY (credential_id) REFERENCES  credential(credential_id),
     FOREIGN KEY (encryption_id) REFERENCES credential_encryption(encryption_id) ON DELETE RESTRICT -- 关联加密信息表, 删除凭证加密信息前需要先删除相关联的凭证历史
-);
-
--- 凭证变更记录表，记录所有凭证操作的历史信息
-CREATE TABLE credential_change_log (
-    log_id INT AUTO_INCREMENT PRIMARY KEY, -- 变更记录的唯一标识，自增主键
-    history_id INT NOT NULL,
-    user_id INT NOT NULL, -- 执行操作的用户 ID（操作者）
-    operation_type VARCHAR(50) NOT NULL, -- 操作类型：新增、更新、删除等，使用字符串存储
-    operation_time DATETIME DEFAULT CURRENT_TIMESTAMP, -- 操作发生的时间，默认为当前时间
-    description TEXT, -- 操作描述，用于记录操作的详细信息（如变更原因等）
-    FOREIGN KEY (history_id) REFERENCES credential_history(history_id) ON DELETE RESTRICT, -- 关联凭证历史表，删除凭证历史前需要先删除相关的历史操作记录
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE RESTRICT -- 关联用户表，确保操作者的用户 ID 有效
 );
 
 DELIMITER //
@@ -89,17 +80,52 @@ CREATE TRIGGER trg_credential_before_update
     BEFORE UPDATE ON credential
     FOR EACH ROW
 BEGIN
+    DECLARE v_operation_type VARCHAR(20) DEFAULT 'update';
+    DECLARE v_field_name VARCHAR(20) DEFAULT '';
+
+    -- 检查 encryption_id 是否发生变化
+    IF OLD.encryption_id != NEW.encryption_id THEN
+        SET v_field_name = CONCAT(v_field_name, 'password,');
+    END IF;
+
+    -- 检查 platform 是否发生变化
+    IF OLD.platform != NEW.platform THEN
+        SET v_field_name = CONCAT(v_field_name, 'platform,');
+    END IF;
+
+    -- 检查 account 是否发生变化
+    IF OLD.account != NEW.account THEN
+        SET v_field_name = CONCAT(v_field_name, 'account,');
+    END IF;
+
+    -- 检查 valid 是否发生变化
+    IF OLD.valid != NEW.valid THEN
+        SET v_field_name = CONCAT(v_field_name, 'valid,');
+    END IF;
+
+    -- 去掉最后一个逗号
+    SET v_field_name = TRIM(TRAILING ',' FROM v_field_name);
+
+    -- 如果有字段发生变化，则拼接操作类型
+    IF v_field_name != '' THEN
+        SET v_operation_type = CONCAT(v_operation_type, '-', v_field_name);
+    END IF;
+
     -- 将旧记录插入到 credential_history 表中
     INSERT INTO credential_history (
+        credential_id,
         user_id,
         encryption_id,
         platform,
-        account
+        account,
+        operation_type
     ) VALUES (
+        OLD.credential_id,
         OLD.user_id,
         OLD.encryption_id,
         OLD.platform,
-        OLD.account
+        OLD.account,
+        v_operation_type
     );
 END //
 

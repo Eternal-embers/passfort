@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.tool.passfort.dto.ApiResponse;
 import org.tool.passfort.dto.VerifyResponse;
 import org.tool.passfort.exception.AuthenticationExpiredException;
+import org.tool.passfort.exception.FrequentVerificationCodeRequestException;
 import org.tool.passfort.service.EmailService;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.util.jwt.JwtUtil;
@@ -63,7 +64,7 @@ public class EmailController {
      * @return
      */
     @PostMapping("/verify")
-    public ApiResponse sendVerificationEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws AuthenticationExpiredException {
+    public ApiResponse sendVerificationEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException {
         String email = data.get("email");
         String operationType = data.get("operationType");
 
@@ -79,6 +80,7 @@ public class EmailController {
         long remaingExpireTime = redisUtil.getExpire(lastRequestTimeKey); // 剩余过期时间（秒)
         if(remaingExpireTime > VERIFICATION_CODE_EXPIRE_TIME - 60){
             logger.error("Request verification code too frequently for email: {} from IP address: {}. User-Agent: {}",  email, ipAddress, userAgent);//验证码请求间隔异常，疑似恶意攻击
+            throw new FrequentVerificationCodeRequestException(email, ipAddress, userAgent);
         }
 
         // 生成验证码

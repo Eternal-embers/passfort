@@ -103,4 +103,26 @@ public class AesUtil {
         byte[] original = cipher.doFinal(encryptedData);
         return new String(original);
     }
+
+    public String decrypt(byte[] combinedData) throws  Exception {
+        // 从combinedData中分离IV、密钥和加密数据
+        // IV长度为16字节，密钥长度为32字节
+        byte[] iv = new byte[IV_SIZE / 8];
+        byte[] keyBytes = new byte[KEY_SIZE / 8];
+        byte[] encryptedData;
+
+        // 提取IV
+        System.arraycopy(combinedData, 0, iv, 0, iv.length);
+        // 提取密钥
+        System.arraycopy(combinedData, iv.length, keyBytes, 0, keyBytes.length);
+        // 提取加密数据
+        encryptedData = new byte[combinedData.length - iv.length - keyBytes.length];
+        System.arraycopy(combinedData, iv.length + keyBytes.length, encryptedData, 0, encryptedData.length);
+
+        // 恢复密钥
+        SecretKey key = recoverSecretKey(keyBytes);
+
+        // 使用提取的IV和密钥进行解密
+        return decrypt(encryptedData, iv, key);
+    }
 }

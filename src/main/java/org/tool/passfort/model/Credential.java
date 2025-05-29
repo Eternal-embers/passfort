@@ -17,4 +17,11 @@ public class Credential {
     private LocalDateTime createdAt; // 凭证创建时间，默认为当前时间
     private LocalDateTime updatedAt; // 凭证更新时间，自动更新为当前时间戳
     private Boolean valid; // 凭证是否有效，默认为 TRUE
+
+    public Credential(Integer userId, Integer encryptionId, String platform, String account) {
+        this.userId = userId;
+        this.encryptionId = encryptionId;
+        this.platform = platform;
+        this.account = account;
+    }
 }

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,8 @@
             margin: 0;
             padding: 0;
             line-height: 1.6;
-            color: #444; /* 设置全局字体颜色 */
+            color: #444;
+            /* 设置全局字体颜色 */
         }
 
         .container {
@@ -21,14 +23,14 @@
             background-color: #fff;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            overflow: hidden; /* 防止内容溢出 */
+            overflow: hidden;
+            /* 防止内容溢出 */
         }
 
         .header {
             background-color: #007bff;
             color: #fff;
             padding: 10px 0;
-            border-radius: 8px 8px 0 0;
             text-align: center;
         }
 
@@ -61,7 +63,7 @@
         }
 
         .content ul li,
-        .content ol li{
+        .content ol li {
             margin-bottom: 10px;
             font-size: 14px;
             color: #555;
@@ -135,50 +137,53 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1 id="headerTitle">验证码通知</h1>
+    <div class="container">
+        <div class="header">
+            <h1 id="headerTitle">验证码通知</h1>
+        </div>
+        <div class="content">
+            <h2>尊敬的用户：</h2>
+            <p>您好！为了确保您的账户安全，我们正在验证您的身份。以下是本次操作的详细信息：</p>
+            <ul>
+                <li><strong>操作类型：</strong>${operationType}</li>
+                <li><strong>设备信息：</strong> ${deviceInfo}</li>
+                <li><strong>IP地址：</strong> ${ipAddress}</li>
+                <li><strong>操作时间：</strong> ${operationTime}</li>
+            </ul>
+            <span>您的验证码是：</span>
+            <p class="code">
+                <span id="verificationCode">${verificationCode}</span>
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAONJREFUWEftlmEKwyAMhZuepEcpqOAt1p1s2zmq0N1kF5FsFgQndUZZ6WDpzybGry+PpNAd/MDB93cMwApkFdBaD865sdWkiPgwxiyl81kApdSEiJdSgVwcEa/W2nPpfBHAGFPtEyHECv7fAAAwAMAttCDnid1aAABT3P+cJ3YDiD3wyRMMwAqwAqxAUQE/wUobbSPu1/gSllHTIJJSjoh4CsX9bH8V9e9IQH3f3+d5XnObANKvCv8H317P5F3/MwDUFiQKvnkijpEVSD1Ra8zYE00AtRdS88kKUAvW5jHA4Qo8AUmLHDA1RGagAAAAAElFTkSuQmCC"
+                    alt="复制" />
+            </p>
+            <p>为了您的账户安全，请勿将验证码泄露给他人。</p>
+            <p>如果您未发起此操作，请忽略此通知。如果怀疑账户存在安全风险，请立即采取以下措施：</p>
+            <ol class="security-list">
+                <li>检查账户是否有异常登录行为。</li>
+                <li>更新账户密码。</li>
+                <li>启用双因素认证（如果尚未启用）。</li>
+                <li>联系客服获取帮助。</li>
+            </ol>
+        </div>
+        <div class="footer">
+            <p>如有疑问，请联系客服：${contact}</p>
+            <p>Copyright © ${companyName} ${currentYear}</p>
+        </div>
     </div>
-    <div class="content">
-        <h2>尊敬的用户：</h2>
-        <p>您好！为了确保您的账户安全，我们正在验证您的身份。以下是本次操作的详细信息：</p>
-        <ul>
-            <li><strong>操作类型：</strong>${operationType}</li>
-            <li><strong>设备信息：</strong> ${deviceInfo}</li>
-            <li><strong>IP地址：</strong> ${ipAddress}</li>
-            <li><strong>操作时间：</strong> ${operationTime}</li>
-        </ul>
-        <span>您的验证码是：</span>
-        <p class="code">
-            <span id="verificationCode">${verificationCode}</span>
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAONJREFUWEftlmEKwyAMhZuepEcpqOAt1p1s2zmq0N1kF5FsFgQndUZZ6WDpzybGry+PpNAd/MDB93cMwApkFdBaD865sdWkiPgwxiyl81kApdSEiJdSgVwcEa/W2nPpfBHAGFPtEyHECv7fAAAwAMAttCDnid1aAABT3P+cJ3YDiD3wyRMMwAqwAqxAUQE/wUobbSPu1/gSllHTIJJSjoh4CsX9bH8V9e9IQH3f3+d5XnObANKvCv8H317P5F3/MwDUFiQKvnkijpEVSD1Ra8zYE00AtRdS88kKUAvW5jHA4Qo8AUmLHDA1RGagAAAAAElFTkSuQmCC" alt="复制"/>
-        </p>
-        <p>为了您的账户安全，请勿将验证码泄露给他人。</p>
-        <p>如果您未发起此操作，请忽略此通知。如果怀疑账户存在安全风险，请立即采取以下措施：</p>
-        <ol class="security-list">
-            <li>检查账户是否有异常登录行为。</li>
-            <li>更新账户密码。</li>
-            <li>启用双因素认证（如果尚未启用）。</li>
-            <li>联系客服获取帮助。</li>
-        </ol>
-    </div>
-    <div class="footer">
-        <p>如有疑问，请联系客服：${contact}</p>
-        <p>Copyright © ${companyName} ${currentYear}</p>
-    </div>
-</div>
 
-<script>
-    document.querySelector('.code').addEventListener('click', function() {
-        const code = document.querySelector("#verificationCode").innerText;
-        navigator.clipboard.writeText(code).then(() => {
-            alert('验证码已复制到剪贴板！');
-        }).catch(err => {
-            console.error('复制失败:', err);
+    <script defer>
+        document.querySelector('.code').addEventListener('click', function () {
+            const code = document.querySelector("#verificationCode").innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('验证码已复制到剪贴板！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
         });
-    });
-</script>
+    </script>
 </body>
+
 </html>
