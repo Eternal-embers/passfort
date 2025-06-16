@@ -18,7 +18,7 @@ public class ShuffleAESEncryptionTest {
 
         // Base64 解码
         byte[] shuffledEncryptedData = Base64.getDecoder().decode(base64Encrpted);
-        byte[] unshuffledEncryptedData = ShuffleEncryption.shuffleDecrypt(shuffledEncryptedData, 8, new int[]{7, 2, 5, 0, 3, 6, 1, 4});
+        byte[] unshuffledEncryptedData = ShuffleEncryption.shuffleDecrypt(shuffledEncryptedData, new int[]{7, 2, 5, 0, 3, 6, 1, 4});
 
         // unshuffled data
         System.out.println("Unshuffled encryption:" + new String(Base64.getEncoder().encode(unshuffledEncryptedData)));

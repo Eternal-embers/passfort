@@ -1,7 +1,9 @@
 package org.tool.passfort.controller;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +22,7 @@ import java.util.Date;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/user")
 public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
@@ -72,7 +74,7 @@ public class UserController {
      * @throws VerificationCodeExpireException 验证码过期
      */
     @PostMapping("/login")
-    public ApiResponse login(@RequestBody Map<String, String> request) throws UserNotFoundException, AccountLockedException, VerifyPasswordFailedException, AccountNotActiveException, PasswordInvalidException, VerificationCodeErrorException, VerificationCodeExpireException {
+    public ApiResponse login(HttpServletResponse response, @RequestBody Map<String, String> request) throws UserNotFoundException, AccountLockedException, VerifyPasswordFailedException, AccountNotActiveException, PasswordInvalidException, VerificationCodeErrorException, VerificationCodeExpireException {
         String email = request.get("email");
         String password = request.get("password");
         String code = request.get("code");
@@ -86,6 +88,15 @@ public class UserController {
         if (isTwoFactorAuthEnabled) {
             userService.verify(code, codeKey);
         }
+
+        // 将 refreshToken 信息写入到 HttpOnly 的 Cookie 中
+        String refreshToken = userService.getRefreshTokenByUserId(loginResponse.getUserId(),  loginResponse.getRefreshTokenKey()); // 从 redis 中获取 refresh token
+        Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
+        refreshTokenCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        refreshTokenCookie.setSecure(true); // 设置为 Secure，仅在 HTTPS 连接中传输
+        refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 7 天
+        refreshTokenCookie.setPath("/"); // 设置路径为根路径，确保在整个应用中有效
+        response.addCookie(refreshTokenCookie);
 
         return ApiResponse.success(loginResponse);
     }
@@ -181,11 +192,33 @@ public class UserController {
      * @throws AuthenticationExpiredException 刷新令牌已过期
      */
     @PostMapping("/new_access_token")
-    public ApiResponse getNewAccessToken(HttpServletRequest request) throws AuthenticationExpiredException {
-        String refreshToken = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
+    public ApiResponse getNewAccessToken(HttpServletRequest request) throws AuthenticationExpiredException,  Exception {
+        // 从 Cookie 中获取 refreshToken
+        String refreshToken = getCookieValue(request, "refreshToken");
+
         String newAccessToken = userService.getNewAccessToken(refreshToken);
 
+        String encodedAccessToken = userService.encrypt(newAccessToken);
+
         return ApiResponse.success(newAccessToken);
+    }
+
+    /**
+     * 获取 cookie 的值
+     * @param request 请求对象
+     * @param cookieName cookie 名称
+     * @return 返回 cookie 的值
+     */
+    private String getCookieValue(HttpServletRequest request, String cookieName) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookieName.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -195,9 +228,19 @@ public class UserController {
      * @throws AuthenticationExpiredException 刷新令牌已过期
      */
     @PostMapping("/new_refresh_token")
-    public ApiResponse getNewRefreshToken(HttpServletRequest request) throws AuthenticationExpiredException {
-        String refreshToken = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
+    public ApiResponse getNewRefreshToken(HttpServletRequest request, HttpServletResponse response) throws AuthenticationExpiredException {
+        // 从 Cookie 中获取 refreshToken
+        String refreshToken = getCookieValue(request, "refreshToken");
+
         String newRefreshToken = userService.getNewRefreshToken(refreshToken);
+
+        // 创建新的 refreshToken Cookie
+        Cookie newRefreshTokenCookie = new Cookie("refreshToken", newRefreshToken);
+        newRefreshTokenCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        newRefreshTokenCookie.setSecure(true); // 设置为 Secure，仅在 HTTPS 连接中传输
+        newRefreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 设置过期时间为 7 天
+        newRefreshTokenCookie.setPath("/"); // 设置路径为根路径，确保在整个应用中有效
+        response.addCookie(newRefreshTokenCookie); // 将新的 refreshToken Cookie 添加到响应中
 
         return ApiResponse.success(newRefreshToken);
     }

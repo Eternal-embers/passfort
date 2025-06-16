@@ -8,7 +8,7 @@ import java.security.SecureRandom;
  * 实现该接口的类需要提供具体的哈希算法实现。
  */
 public interface PasswordHasher {
-    int SALT_LENGTH = 16; // 盐值长度（16字节）
+    int SALT_LENGTH = 32; // 盐值长度（32字节）
     String CHARSET = "UTF-8"; // 字符集
 
     /**
@@ -16,7 +16,7 @@ public interface PasswordHasher {
      * 盐值是随机生成的，以确保每个用户的盐值都是唯一的。
      * 使用盐值可以有效防止彩虹表攻击和暴力破解。
      *
-     * @return 一个 16 字节的随机盐值。
+     * @return 一个 32 字节的随机盐值。
      */
     default byte[] generateSalt() {
         SecureRandom random = new SecureRandom();

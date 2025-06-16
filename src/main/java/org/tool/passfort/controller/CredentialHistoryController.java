@@ -24,13 +24,12 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/credential_history")
+@RequestMapping("/credential_history")
 public class CredentialHistoryController {
     private final CredentialHistoryService credentialHistoryService;
     private final AesUtil aesUtil;
     private final EmailService emailService;
 
-    private final static int CHUNK_SIZE = 8;
     private final static int[] SHUFFLE_ORDER = {7, 2, 5, 0, 3, 6, 1, 4};
 
     @Autowired
@@ -68,7 +67,7 @@ public class CredentialHistoryController {
 
         // 对密码进行混淆加密
         byte[] encryptedPassword = aesUtil.encrypt(password);//iv, key, encryptedPassword的组合, 64字节
-        byte[] shuffledEncryptedPassword = ShuffleEncryption.shuffleEncrypt(encryptedPassword, CHUNK_SIZE, SHUFFLE_ORDER);
+        byte[] shuffledEncryptedPassword = ShuffleEncryption.shuffleEncrypt(encryptedPassword, SHUFFLE_ORDER);
 
         return ApiResponse.success(shuffledEncryptedPassword);
     }

@@ -48,3 +48,6 @@ build/
 # Ignore other possible certificate and key files
 *.cert
 *.keypair
+
+# Ignore the png image
+*.png

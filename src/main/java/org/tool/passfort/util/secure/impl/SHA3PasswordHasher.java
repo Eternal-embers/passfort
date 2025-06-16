@@ -4,7 +4,7 @@ import org.tool.passfort.util.secure.PasswordHasher;
 import java.security.MessageDigest;
 
 public class SHA3PasswordHasher implements PasswordHasher {
-    private static final String HASH_ALGORITHM = "SHA3-256"; // 使用SHA-3 256位哈希算法
+    private static final String HASH_ALGORITHM = "SHA3-512"; // 使用SHA-3 512位哈希算法
 
     @Override
     public byte[] hashPassword(String password) throws Exception {

@@ -1,12 +1,21 @@
 # https 配置
 server:
   port: 8443
+  http2:
+    enabled: true
   ssl:
     enabled: true
-    key-store: classpath:keystore.p12
-    key-store-type: PKCS12
-    key-alias: secretkey
-    key-store-password: passfort
+    bundle: server
+
+#    key-store: "classpath:backend.p12" # 指定服务器的密钥库文件路径
+#    key-store-type: PKCS12 # 指定密钥库的类型为 PKCS12
+#    key-alias: backend  # 指定密钥库中服务器证书的别名
+#    trust-certificate: classpath:ca.crt  # 指定信任的 CA 证书路径，这是 PEM 格式的 CA 证书文件, 用于验证客户端提供的证书是否由该 CA 签发
+
+#    client-auth: need
+#    trust-store: "classpath:truststore.p12"
+#    trust-store-type: PKCS12
+#    trust-store-password 信任库的导出密码，在程序参数中设置
 
 # 数据库设置
 database:
@@ -22,6 +31,22 @@ database:
 
 # spring 配置
 spring:
+  # ssl 配置
+  ssl:
+    bundle:
+      jks:
+        server:
+          key:
+            alias: "backend"
+          keystore:
+            location: "classpath:backend.p12"
+            type: "PKCS12"
+      pem:
+        client:
+          truststore:
+            certificate: "classpath:ca.crt"
+            type: "PEM"
+
   # 数据源配置
   datasource:
     url: jdbc:mysql://${database.host}:${database.port}/${database.name}?useSSL=true&requireSSL=true&verifyServerCertificate=true&serverTimezone=UTC&characterEncoding=utf-8
@@ -88,19 +113,19 @@ mybatis:
     aggressive-lazy-loading: false # 禁用激进的延迟加载
 
 # MyBatis 分页插件配置
-pagehelper:
-  helperDialect: mysql  # 指定数据库类型，如 mysql、oracle 等
-  reasonable: true      # 是否分页合理化，当分页参数不合理时，自动调整为合理值
-  supportMethodsArguments: true  # 是否支持通过 Mapper 方法参数来传递分页参数
-  params: count=countSql;offset=offsetSql;limit=limitSql  # 自定义分页参数名称
-  autoRuntimeDialect: false  # 是否自动检测数据库方言
-  offsetAsPageNum: false     # 是否将 RowBounds 的 offset 当作页码使用
-  rowBoundsWithCount: true   # 是否使用 RowBounds 分页时进行 count 查询
+#pagehelper:
+#  helperDialect: mysql  # 指定数据库类型，如 mysql、oracle 等
+#  reasonable: true      # 是否分页合理化，当分页参数不合理时，自动调整为合理值
+#  supportMethodsArguments: true  # 是否支持通过 Mapper 方法参数来传递分页参数
+#  params: count=countSql;offset=offsetSql;limit=limitSql  # 自定义分页参数名称
+#  autoRuntimeDialect: false  # 是否自动检测数据库方言
+#  offsetAsPageNum: false     # 是否将 RowBounds 的 offset 当作页码使用
+#  rowBoundsWithCount: true   # 是否使用 RowBounds 分页时进行 count 查询
 
 # jwt 配置
 jwt:
   issuer: PassFort
-  audience: http://localhost/passfort/
+  audience: https://localhost/passfort/
 
 # 日志配置
 logging:

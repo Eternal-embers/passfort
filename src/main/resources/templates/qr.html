@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>敏感信息访问权限通知</title>
+    <title>敏感信息访问</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -87,6 +87,10 @@
                 font-size: 0.9em;
             }
 
+            .content p #infoId {
+                font-size: 8px;
+            }
+
             .content .info p {
                 font-size: 0.8em;
             }
@@ -107,7 +111,9 @@
             <p>尊敬的用户：</p>
             <p>您已获得访问敏感信息的权限。以下是本次操作的详细信息：</p>
             <div class="info">
-                <p><strong>信息ID：</strong>${infoId}</p>
+                <p><strong>信息ID：</strong>
+                    <span id="infoId">${infoId}</span>
+                </p>
                 <p><strong>访问设备信息：</strong>${deviceInfo}</p>
                 <p><strong>IP地址：</strong>${ipAddress}</p>
                 <p><strong>操作时间：</strong>${operationTime}</p>

@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.tool.passfort.dto.ApiResponse;
 import org.tool.passfort.dto.VerifyResponse;
-import org.tool.passfort.exception.AuthenticationExpiredException;
 import org.tool.passfort.exception.FrequentVerificationCodeRequestException;
 import org.tool.passfort.service.EmailService;
 import org.tool.passfort.service.UserService;
@@ -26,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 @RestController
-@RequestMapping("/api/mail")
+@RequestMapping("/mail")
 public class EmailController {
     private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
     private final EmailService emailService;

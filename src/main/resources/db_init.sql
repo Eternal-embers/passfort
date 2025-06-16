@@ -10,7 +10,7 @@ USE passfort;
 CREATE TABLE users (
    user_id INT AUTO_INCREMENT PRIMARY KEY, -- 用户唯一标识，主键，自动递增
    email VARCHAR(128) UNIQUE DEFAULT NULL, -- 邮箱地址（唯一，用于邮箱注册）
-   password_hash VARBINARY(128) NOT NULL, -- 密码哈希（存储哈希值和盐值的组合）
+   password_hash VARBINARY(150) NOT NULL, -- 密码哈希（存储哈希值和盐值的组合）
    permission_hash VARBINARY(128) DEFAULT NULL, -- 权限口令哈希（存储权限口令的哈希值）
    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 注册时间
    is_active TINYINT(1) DEFAULT 0, -- 账户是否激活（0：未激活，1：已激活）
@@ -19,6 +19,28 @@ CREATE TABLE users (
    lockout_until DATETIME DEFAULT NULL, -- 账户锁定时间
    last_password_update DATETIME DEFAULT CURRENT_TIMESTAMP, -- 上一次密码更新时间
    is_two_factor_auth_enabled TINYINT(1) DEFAULT 1 -- 是否开启双重认证（0：未开启，1：已开启）
+);
+
+-- 创建用户验证表，存储用户的验证信息
+CREATE TABLE user_verification (
+   verification_id INT AUTO_INCREMENT PRIMARY KEY, -- 验证记录唯一标识
+   user_id INT NOT NULL, -- 关联用户主表的用户ID
+   recovery_email VARCHAR(128) DEFAULT NULL, -- 恢复邮箱
+   security_question_1 VARCHAR(255) DEFAULT NULL, -- 第一组安全问题
+   security_answer_1 VARBINARY(150) DEFAULT NULL, -- 第一组安全问题的答案（哈希存储）
+   security_question_2 VARCHAR(255) DEFAULT NULL, -- 第二组安全问题
+   security_answer_2 VARBINARY(150) DEFAULT NULL, -- 第二组安全问题的答案（哈希存储）
+   security_question_3 VARCHAR(255) DEFAULT NULL, -- 第三组安全问题
+   security_answer_3 VARBINARY(150) DEFAULT NULL, -- 第三组安全问题的答案（哈希存储）
+   full_name VARBINARY(50) DEFAULT NULL, -- 姓名(哈希存储)
+   id_card_number VARBINARY(150) DEFAULT NULL, -- 身份证号（哈希存储）
+   phone_number VARBINARY(150) DEFAULT NULL, -- 手机号（哈希存储）
+   high_school_name VARBINARY(50) DEFAULT NULL, -- 高中名称(哈希存储）
+   hometown VARBINARY(100) DEFAULT NULL, -- 家乡(哈希存储)
+   occupation VARBINARY(50) DEFAULT NULL, -- 工作(哈希存储）
+   mother_full_name VARBINARY(50) DEFAULT NULL, -- 母亲姓名(哈希存储）
+   father_full_name VARBINARY(50) DEFAULT NULL, -- 父亲姓名(哈希存储)
+   FOREIGN KEY (user_id) REFERENCES users(user_id) -- 外键关联用户主表
 );
 
 -- 创建第三方登录关联表，存储用户与第三方登录方式的关联信息

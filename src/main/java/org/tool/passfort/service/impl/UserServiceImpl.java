@@ -11,16 +11,14 @@ import org.tool.passfort.mapper.UserMapper;
 import org.tool.passfort.dto.LoginResponse;
 import org.tool.passfort.model.User;
 import org.tool.passfort.service.UserService;
+import org.tool.passfort.util.encrypt.AesUtil;
 import org.tool.passfort.util.jwt.JwtUtil;
 import org.tool.passfort.util.redis.RedisUtil;
 import org.tool.passfort.util.secure.PasswordHasher;
 
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.UUID;
 
 @Service
 @Transactional(rollbackFor = DatabaseOperationException.class) // 开启事务，并在发生 DatabaseOperationException 异常时回滚
@@ -37,13 +35,31 @@ public class UserServiceImpl implements UserService {
     private static final long REFRESH_TOKEN_EXPIRE_TIME = 604800; // 7天
     private static final long LOCKOUT_TIME = 1800; // 30分钟
     private static final long REFRESH_TOKEN_EXPIRING_SOON_THRESHOLD = 3600; // 1小时
+    private final static int[] SHUFFLE_ORDER = {2, 14, 15, 6, 8, 9, 12, 4, 10, 11, 3, 13, 0, 7, 1, 5};
+    private final AesUtil aesUtil;
 
     @Autowired
-    public UserServiceImpl(UserMapper userMapper, PasswordHasher passwordHasher, JwtUtil jwtUtil, RedisUtil redisUtil) {
+    public UserServiceImpl(UserMapper userMapper, PasswordHasher passwordHasher, JwtUtil jwtUtil, RedisUtil redisUtil, AesUtil aesUtil) {
         this.userMapper = userMapper;
         this.passwordHasher = passwordHasher;
         this.jwtUtil = jwtUtil;
         this.redisUtil = redisUtil;
+        this.aesUtil = aesUtil;
+    }
+
+    /**
+     * AES加密并分片混淆
+     * @param data 待加密数据字符串
+     * @return BASE64编码后的加密数据
+     */
+    public String encrypt(String data) {
+        byte[] encryptedData;
+        try {
+            encryptedData = aesUtil.encrypt(data);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return Base64.getEncoder().encodeToString(encryptedData);
     }
 
     /**
@@ -152,7 +168,11 @@ public class UserServiceImpl implements UserService {
             // 重置连续失败登录次数
             userMapper.resetFailedLoginAttempts(email);
 
-            return new LoginResponse(userId, accessToken, refreshToken, ACCESS_TOKEN_EXPIRE_TIME, REFRESH_TOKEN_EXPIRE_TIME);
+            // 对 refreshToken 和 accessToken 进行加密处理
+            String encryptedRefreshToken = encrypt(refreshToken);
+            String encryptedAccessToken = encrypt(accessToken);
+
+            return new LoginResponse(userId, encryptedAccessToken, key, encryptedRefreshToken, ACCESS_TOKEN_EXPIRE_TIME, REFRESH_TOKEN_EXPIRE_TIME);
         } else {
             // 更新连续失败登录次数
             userMapper.incrementFailedLoginAttempts(email);
@@ -171,6 +191,14 @@ public class UserServiceImpl implements UserService {
             // 密码错误
             throw new PasswordInvalidException(email, failedLoginAttempts);
         }
+    }
+
+    /*
+     * 根据用户Id获取Redis中最早的refreshToken
+     */
+    @Override
+    public String getRefreshTokenByUserId(int userId, String refreshTokenKey) {
+        return redisUtil.getString(refreshTokenKey);
     }
 
     /**

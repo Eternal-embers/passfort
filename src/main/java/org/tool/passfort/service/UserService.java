@@ -7,6 +7,13 @@ import java.time.LocalDateTime;
 
 public interface UserService {
     /**
+     * AES加密并分片混淆
+     * @param data 待加密数据字符串
+     * @return BASE64编码后的加密数据
+     */
+    String encrypt(String data);
+
+    /**
      * 使用默认邮箱注册方式注册账号，根据抛出的不同异常方式判定注册失败的原因
      * @param email 邮箱地址
      * @param password 密码
@@ -21,6 +28,11 @@ public interface UserService {
      * @return JWT token
      */
     LoginResponse loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException;
+
+    /*
+     * 根据用户Id获取Redis中最早的refreshToken
+     */
+    String getRefreshTokenByUserId(int userId, String refreshTokenKey);
 
     /**
      * 检查验证码是否正确

@@ -112,6 +112,14 @@ public class RedisUtil {
     // =============================通用操作================================
 
     /**
+     * 发送 PING 命令，检查 Redis 连接
+     * @return 返回 PONG 表示连接成功，其他值表示连接失败
+     */
+    public String ping() {
+        return stringRedisTemplate.getConnectionFactory().getConnection().ping();
+    }
+
+    /**
      * 设置键的过期时间
      *
      * @param key      键
