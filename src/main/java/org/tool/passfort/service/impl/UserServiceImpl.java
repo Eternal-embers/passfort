@@ -209,7 +209,7 @@ public class UserServiceImpl implements UserService {
      * @throws VerificationCodeErrorException 验证码错误
      */
     @Override
-    public void verify(String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException {
+    public void verify(String email, String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException {
         //检查 codeKey 是否过期
         boolean isExpire = redisUtil.isExpire(codeKey);
         if(isExpire) {
@@ -217,14 +217,13 @@ public class UserServiceImpl implements UserService {
             throw new VerificationCodeExpireException("Verification code expired");
         }
 
-
         //检查验证码是否正确
-        if (!code.equals(redisUtil.getString(codeKey))) {
+        String verificationInfo = redisUtil.getString(codeKey);// 验证信息的格式为"邮箱:验证码"
+        if(!verificationInfo.equals(email + ":" + code)) {
             logger.error("verification code error for codeKey: {}", codeKey);
             throw new VerificationCodeErrorException("Verification code error");
         }
     }
-
 
     /**
      * 重置用户密码

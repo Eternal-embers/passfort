@@ -42,10 +42,16 @@ public class UserController {
      * @throws EmailAlreadyRegisteredException 邮箱已注册
      */
     @PostMapping("/register")
-    public ApiResponse register(@RequestBody Map<String, String> request) throws DatabaseOperationException, PasswordHashingException, EmailAlreadyRegisteredException {
+    public ApiResponse register(@RequestBody Map<String, String> request) throws DatabaseOperationException, PasswordHashingException, EmailAlreadyRegisteredException, VerificationCodeErrorException, VerificationCodeExpireException {
         String email = request.get("email");
         String password = request.get("password");
+        String code = request.get("code");
+        String codeKey = request.get("codeKey");
 
+        // 验证验证码
+        userService.verify(email, code, codeKey);
+
+        // 注册用户
         userService.registerUser(email, password);
 
         return ApiResponse.success(email + " register success");
@@ -86,7 +92,7 @@ public class UserController {
         // 默认开启双重认证 - 邮箱验证
         boolean isTwoFactorAuthEnabled = userService.isTwoFactorAuthEnabled(email);
         if (isTwoFactorAuthEnabled) {
-            userService.verify(code, codeKey);
+            userService.verify(email, code, codeKey);
         }
 
         // 将 refreshToken 信息写入到 HttpOnly 的 Cookie 中
@@ -200,7 +206,7 @@ public class UserController {
 
         String encodedAccessToken = userService.encrypt(newAccessToken);
 
-        return ApiResponse.success(newAccessToken);
+        return ApiResponse.success(encodedAccessToken);
     }
 
     /**
@@ -242,7 +248,7 @@ public class UserController {
         newRefreshTokenCookie.setPath("/"); // 设置路径为根路径，确保在整个应用中有效
         response.addCookie(newRefreshTokenCookie); // 将新的 refreshToken Cookie 添加到响应中
 
-        return ApiResponse.success(newRefreshToken);
+        return ApiResponse.success("New refresh token successfully");
     }
 
     // 查询 refresh token 是否即将过期

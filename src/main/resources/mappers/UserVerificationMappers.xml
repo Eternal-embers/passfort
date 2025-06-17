@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.tool.passfort.mapper.UserVerificationMapper">
+
+    <!-- 插入用户验证信息 -->
+    <insert id="insertUserVerification"
+            parameterType="org.tool.passfort.model.UserVerification"
+            useGeneratedKeys="true"
+            keyProperty="verificationId">
+        INSERT INTO user_verification (
+            user_id,
+            recovery_email,
+            security_question_1,
+            security_answer_1,
+            security_question_2,
+            security_answer_2,
+            security_question_3,
+            security_answer_3,
+            full_name,
+            id_card_number,
+            phone_number,
+            high_school_name,
+            hometown,
+            occupation,
+            mother_full_name,
+            father_full_name
+        ) VALUES (
+            #{userId},
+            #{recoveryEmail},
+            #{securityQuestion1},
+            #{securityAnswer1},
+            #{securityQuestion2},
+            #{securityAnswer2},
+            #{securityQuestion3},
+            #{securityAnswer3},
+            #{fullName},
+            #{idCardNumber},
+            #{phoneNumber},
+            #{highSchoolName},
+            #{hometown},
+            #{occupation},
+            #{motherFullName},
+            #{fatherFullName}
+         )
+    </insert>
+
+    <!-- 根据用户 ID 查询用户验证信息 -->
+    <select id="selectByUserId"
+            parameterType="int"
+            resultType="org.tool.passfort.model.UserVerification">
+        SELECT
+            verification_id,
+            user_id,
+            recovery_email,
+            security_question_1,
+            security_answer_1,
+            security_question_2,
+            security_answer_2,
+            security_question_3,
+            security_answer_3,
+            full_name,
+            id_card_number,
+            phone_number,
+            high_school_name,
+            hometown,
+            occupation,
+            mother_full_name,
+            father_full_name
+        FROM
+            user_verification
+        WHERE
+            user_id = #{userId}
+    </select>
+
+    <!-- 根据用户 ID 修改用户验证信息 -->
+    <update id="updateUserVerification"
+            parameterType="org.tool.passfort.model.UserVerification">
+        UPDATE user_verification
+        SET
+            recovery_email = #{recoveryEmail},
+            security_question_1 = #{securityQuestion1},
+            security_answer_1 = #{securityAnswer1},
+            security_question_2 = #{securityQuestion2},
+            security_answer_2 = #{securityAnswer2},
+            security_question_3 = #{securityQuestion3},
+            security_answer_3 = #{securityAnswer3},
+            full_name = #{fullName},
+            id_card_number = #{idCardNumber},
+            phone_number = #{phoneNumber},
+            high_school_name = #{highSchoolName},
+            hometown = #{hometown},
+            occupation = #{occupation},
+            mother_full_name = #{motherFullName},
+            father_full_name = #{fatherFullName}
+        WHERE
+            user_id = #{userId}
+    </update>
+</mapper>

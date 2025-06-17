@@ -41,7 +41,7 @@ public interface UserService {
      * @throws VerificationCodeExpireException 验证码过期
      * @throws VerificationCodeErrorException 验证码错误
      */
-    void verify(String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException;
+    void verify(String email, String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException;
 
     /**
      * 重置用户密码

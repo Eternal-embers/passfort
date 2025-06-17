@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class HashUtil {
+    public static HashAlgorithm defaultAlgorithm = HashAlgorithm.SHA3_512;
 
     public enum HashAlgorithm {
         // MD5：速度快，输出长度为128位（32个十六进制字符）。适合文件完整性校验，但安全性较低，不推荐用于密码存储。
@@ -29,6 +30,15 @@ public class HashUtil {
         public String getAlgorithmName() {
             return algorithmName;
         }
+    }
+
+    /**
+     * 使用默认哈希算法进行处理
+     * @param text 需要哈希的文本
+     * @return 哈希值(16进制字符串)
+     */
+    public static String hashText(String text) {
+        return hashText(text, defaultAlgorithm);
     }
 
     /**
@@ -66,6 +76,16 @@ public class HashUtil {
      */
     public static boolean verifyTextHash(String text, String hash, HashAlgorithm algorithm) {
         return hashText(text, algorithm).equals(hash);
+    }
+
+    /**
+     *  使用默认哈希算法SHA3_512验证文本是否与给定的哈希值匹配
+     * @param text
+     * @param hash
+     * @return
+     */
+    public static boolean verifyTextHash(String text, String hash) {
+        return verifyTextHash(text, hash, defaultAlgorithm);
     }
 
     /**

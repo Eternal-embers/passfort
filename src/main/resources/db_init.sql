@@ -27,19 +27,19 @@ CREATE TABLE user_verification (
    user_id INT NOT NULL, -- 关联用户主表的用户ID
    recovery_email VARCHAR(128) DEFAULT NULL, -- 恢复邮箱
    security_question_1 VARCHAR(255) DEFAULT NULL, -- 第一组安全问题
-   security_answer_1 VARBINARY(150) DEFAULT NULL, -- 第一组安全问题的答案（哈希存储）
+   security_answer_1 VARCHAR(128) DEFAULT NULL, -- 第一组安全问题的答案（哈希存储）
    security_question_2 VARCHAR(255) DEFAULT NULL, -- 第二组安全问题
-   security_answer_2 VARBINARY(150) DEFAULT NULL, -- 第二组安全问题的答案（哈希存储）
+   security_answer_2 VARCHAR(128) DEFAULT NULL, -- 第二组安全问题的答案（哈希存储）
    security_question_3 VARCHAR(255) DEFAULT NULL, -- 第三组安全问题
-   security_answer_3 VARBINARY(150) DEFAULT NULL, -- 第三组安全问题的答案（哈希存储）
-   full_name VARBINARY(50) DEFAULT NULL, -- 姓名(哈希存储)
-   id_card_number VARBINARY(150) DEFAULT NULL, -- 身份证号（哈希存储）
-   phone_number VARBINARY(150) DEFAULT NULL, -- 手机号（哈希存储）
-   high_school_name VARBINARY(50) DEFAULT NULL, -- 高中名称(哈希存储）
-   hometown VARBINARY(100) DEFAULT NULL, -- 家乡(哈希存储)
-   occupation VARBINARY(50) DEFAULT NULL, -- 工作(哈希存储）
-   mother_full_name VARBINARY(50) DEFAULT NULL, -- 母亲姓名(哈希存储）
-   father_full_name VARBINARY(50) DEFAULT NULL, -- 父亲姓名(哈希存储)
+   security_answer_3 VARCHAR(128) DEFAULT NULL, -- 第三组安全问题的答案（哈希存储）
+   full_name VARCHAR(128) DEFAULT NULL, -- 姓名(哈希存储)
+   id_card_number VARCHAR(128) DEFAULT NULL, -- 身份证号（哈希存储）
+   phone_number VARCHAR(128) DEFAULT NULL, -- 手机号（哈希存储）
+   high_school_name VARCHAR(128) DEFAULT NULL, -- 高中名称(哈希存储）
+   hometown VARCHAR(128) DEFAULT NULL, -- 家乡(哈希存储)
+   occupation VARCHAR(128) DEFAULT NULL, -- 工作(哈希存储）
+   mother_full_name VARCHAR(128) DEFAULT NULL, -- 母亲姓名(哈希存储）
+   father_full_name VARCHAR(128) DEFAULT NULL, -- 父亲姓名(哈希存储)
    FOREIGN KEY (user_id) REFERENCES users(user_id) -- 外键关联用户主表
 );
 

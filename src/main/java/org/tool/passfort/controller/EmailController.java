@@ -87,7 +87,8 @@ public class EmailController {
 
         // 将验证码存储到 redis， 并记录发起请求的时间
         String codeKey = VERIFICATION_CODE_PREFIX  + userId + ":" + UUID.randomUUID();
-        redisUtil.setString(codeKey, verificationCode, VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS);
+        String verificationInfo = email + ":" + verificationCode;// 验证信息的格式为"邮箱:验证码"
+        redisUtil.setString(codeKey, verificationInfo , VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS);
 
         // 记录最新的验证码请求时间，防止恶意攻击
         redisUtil.setString(lastRequestTimeKey, operationTime, VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS);

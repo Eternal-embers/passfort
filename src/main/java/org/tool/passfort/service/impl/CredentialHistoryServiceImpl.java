@@ -2,6 +2,8 @@ package org.tool.passfort.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.tool.passfort.exception.DatabaseOperationException;
 import org.tool.passfort.mapper.CredentialEncryptionMapper;
 import org.tool.passfort.mapper.CredentialHistoryMapper;
 import org.tool.passfort.model.CredentialEncryption;
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Transactional(rollbackFor = DatabaseOperationException.class)
 public class CredentialHistoryServiceImpl implements CredentialHistoryService {
     private final CredentialHistoryMapper credentialHistoryMapper;
     private final CredentialEncryptionMapper credentialEncryptionMapper;

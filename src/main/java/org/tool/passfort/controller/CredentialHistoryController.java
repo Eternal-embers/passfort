@@ -122,6 +122,11 @@ public class CredentialHistoryController {
         return ApiResponse.success("Delete history[id: " + historyId + "] success");
     }
 
+    /**
+     * 删除指定日期前的所有历史记录
+     * @param data 请求体中需要包含 credentialId 和 createdAt
+     * @return 删除历史记录的结果
+     */
     @PostMapping("/delete/before")
     public ApiResponse deleteAccountHistoryBefore(HttpServletRequest request, @RequestBody Map<String, String> data) {
         String userId = (String) request.getAttribute("userId");
