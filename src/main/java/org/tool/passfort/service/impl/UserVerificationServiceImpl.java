@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.tool.passfort.exception.*;
 import org.tool.passfort.mapper.UserMapper;
 import org.tool.passfort.mapper.UserVerificationMapper;
+import org.tool.passfort.model.ActivationInformation;
 import org.tool.passfort.model.UserVerification;
 import org.tool.passfort.service.UserVerificationService;
 import org.tool.passfort.util.redis.RedisUtil;
@@ -32,8 +33,11 @@ public class UserVerificationServiceImpl implements UserVerificationService {
     }
 
     @Override
-    public void createUserVerification(UserVerification userVerification, String verificationCode, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException {
+    public void createUserVerification(ActivationInformation activationInformation) throws VerificationCodeExpireException, VerificationCodeErrorException {
+        UserVerification userVerification = activationInformation.getUserVerification();
         String recoveryEmail = userVerification.getRecoveryEmail();
+        String verificationCode = activationInformation.getVerificationCode();
+        String codeKey = activationInformation.getCodeKey();
 
         //检查 codeKey 是否过期
         boolean isExpire = redisUtil.isExpire(codeKey);

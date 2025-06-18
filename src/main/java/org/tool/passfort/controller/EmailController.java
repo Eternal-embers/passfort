@@ -58,16 +58,16 @@ public class EmailController {
 
     /**
      * 发送邮箱验证码，重新请求至少需要间隔一分钟
-     * @param request
+     * @param request 包含 JWT interceptor 解析的用户信息
      * @param data 请求体中需要包含 email 和 operationType
-     * @return
+     * @return 验证码和验证码的 redis 键
      */
     @PostMapping("/verify")
     public ApiResponse sendVerificationEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException {
         String email = data.get("email");
         String operationType = data.get("operationType");
 
-        int userId = userService.getUserId(email);
+        int userId = Integer.parseInt((String) request.getAttribute("userId"));
 
         // 收集请求信息用于邮件提示
         String ipAddress = request.getRemoteAddr();

@@ -10,9 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.tool.passfort.exception.*;
 import org.tool.passfort.dto.LoginResponse;
+import org.tool.passfort.model.ActivationInformation;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.dto.ApiResponse;
+import org.tool.passfort.service.UserVerificationService;
 import org.tool.passfort.util.jwt.JwtUtil;
+import org.tool.passfort.util.secure.PasswordGenerator;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -23,14 +26,17 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
+@SuppressWarnings("rawtypes") // 消除ApiResponse的原始类型警告
 public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
+    private final UserVerificationService userVerificationService;
     private final JwtUtil jwtUtil;
 
     @Autowired
-    public UserController(UserService userService, JwtUtil jwtUtil) {
+    public UserController(UserService userService, UserVerificationService userVerificationService, JwtUtil jwtUtil) {
         this.userService = userService;
+        this.userVerificationService = userVerificationService;
         this.jwtUtil = jwtUtil;
     }
 
@@ -57,14 +63,175 @@ public class UserController {
         return ApiResponse.success(email + " register success");
     }
 
-    //激活帐号
-    @PostMapping("/activate")
-    public ApiResponse activate(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
+    /**
+     * 生成身份验证请求，用于在 Cookie 中设置用户身份
+     */
+    @PostMapping("/generate_verification_request")
+    public ApiResponse generateVerificationRequest(@RequestBody Map<String, String> data, HttpServletResponse response) {
+        String email = data.get("email");
 
+        Cookie verificationRequestCookie = new Cookie("verificationRequest", email);
+        verificationRequestCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        verificationRequestCookie.setSecure(true); // 设置为 Secure，仅在 HTTPS 连接中传输
+        verificationRequestCookie.setMaxAge(60 * 30); // 有效期为 30 分钟，身份验证必须在 30 分钟完成
+        verificationRequestCookie.setPath("/"); // 设置路径为根路径，确保在整个应用中有效
+
+        response.addCookie(verificationRequestCookie);
+
+        return ApiResponse.success("Generate verification request success");
+    }
+
+    /**
+     * 密码验证，用于重置密码时验证身份
+     * @param request 请求中包含JWT interceptor 解析得到的用户信息
+     * @param response 响应对象，用于设置验证cookie，cookie 的时效为10分钟，必须在10分钟内完成密码重置
+     * @param data 请求体中需要包含 password
+     * @throws VerifyPasswordFailedException 密码验证失败
+     * @throws PasswordVerificationException 密码验证异常
+     */
+    @PostMapping("/password_verification")
+    public ApiResponse passwordVerification(HttpServletRequest request, HttpServletResponse response, @RequestBody Map<String, String> data) throws VerifyPasswordFailedException, PasswordVerificationException {
+        String email = (String) request.getAttribute("email");
+        String password = data.get("password");
+        userService.passwordVerification(email, password);
+
+        // 验证通过，设置用户的密码验证通过的 cookie
+        Cookie passwordVerificationCookie = new Cookie("passwordVerification", "true");
+        passwordVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        passwordVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
+        passwordVerificationCookie.setMaxAge(60 * 10); // 10 分钟， 10 分钟内有权限重置密码，否则此验证失效
+        passwordVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        response.addCookie(passwordVerificationCookie);
+
+        return ApiResponse.success("Password verification success");
+    }
+
+    /**
+     * 恢复邮箱验证
+     * @param request 请求中包含JWT interceptor 解析得到的用户信息
+     * @param data 请求体中需要包含 verificationCode 和 codeKey
+     * @throws VerificationCodeErrorException 抛出验证码异常则验证失败
+     */
+    @PostMapping("/verify/recovery_email")
+    public ApiResponse recoveryEmailVerification(HttpServletRequest request, HttpServletResponse response, @RequestBody Map<String, String> data) throws VerificationCodeErrorException, VerificationCodeExpireException {
+        Integer userId = Integer.parseInt((String) request.getAttribute("userId"));
+        String verificationCode = data.get("verificationCode");
+        String codeKey = data.get("codeKey");
+
+        userVerificationService.recoveryEmailVerification(userId, verificationCode, codeKey);
+
+        // 验证通过，设置用户的恢复邮箱验证通过的 cookie
+        Cookie recoveryEmailVerificationCookie = new Cookie("recoveryEmailVerification", "true");
+        recoveryEmailVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        recoveryEmailVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
+        recoveryEmailVerificationCookie.setMaxAge(60 * 30); // 30 分钟， 30 分钟内必须完成其他验证，否则此验证失效
+        recoveryEmailVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        response.addCookie(recoveryEmailVerificationCookie);
+
+        return ApiResponse.success("Recovery email verification success");
+    }
+
+    /**
+     * 安全问题验证
+     * @param request 请求中包含JWT interceptor 解析得到的用户信息
+     * @param data 请求体中需要包含 securityAnswer1, securityAnswer2, securityAnswer3
+     * @throws SecurityQuestionVerificationException 抛出安全问题验证异常则验证失败
+     */
+    @PostMapping("verify/security_questions")
+    public ApiResponse securityQuestionVerification(HttpServletRequest request, HttpServletResponse response, @RequestBody Map<String, String> data) throws SecurityQuestionVerificationException {
+        Integer userId = Integer.parseInt((String) request.getAttribute("userId"));
+        String securityAnswer1 = data.get("securityAnswer1");
+        String securityAnswer2 = data.get("securityAnswer2");
+        String securityAnswer3 = data.get("securityAnswer3");
+
+        userVerificationService.securityQuestionVerification(userId, securityAnswer1, securityAnswer2, securityAnswer3);
+
+        // 验证通过，设置用户的安全问题验证通过的 cookie
+        Cookie securityQuestionVerificationCookie = new Cookie("securityQuestionVerification", "true");
+        securityQuestionVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        securityQuestionVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
+        securityQuestionVerificationCookie.setMaxAge(60 * 20); // 20 分钟， 20 分钟内必须完成其他验证，否则此验证失效
+        securityQuestionVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        response.addCookie(securityQuestionVerificationCookie);
+
+        return ApiResponse.success("Security question verification success");
+    }
+
+    /**
+     * 个人信息验证
+     * @param request 请求中包含JWT interceptor 解析得到的用户信息
+     * @param data 请求体中需要包含 fullName, idCardNumber, phoneNumber
+     * @throws PersonalInfoVerificationException 抛出个人信息验证异常则验证失败
+     */
+    @PostMapping("verify/personal_info")
+    public ApiResponse personalInfoVerification(HttpServletRequest request, HttpServletResponse response, @RequestBody Map<String, String> data) throws PersonalInfoVerificationException {
+        Integer userId = Integer.parseInt((String) request.getAttribute("userId"));
+        String fullName = data.get("fullName");
+        String idCardNumber = data.get("idCardNumber");
+        String phoneNumber = data.get("phoneNumber");
+
+        userVerificationService.personalInfoVerification(userId, fullName, idCardNumber, phoneNumber);
+
+        // 验证通过，设置用户的个人信息验证通过的 cookie
+        Cookie personalInfoVerificationCookie = new Cookie("personalInfoVerification", "true");
+        personalInfoVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        personalInfoVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
+        personalInfoVerificationCookie.setMaxAge(60 * 15); // 15 分钟， 15 分钟内必须完成其他验证，否则此验证失效
+        personalInfoVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        response.addCookie(personalInfoVerificationCookie);
+
+        return ApiResponse.success("Personal info verification success");
+    }
+
+    /**
+     * 其他可选信息验证
+     * @param request 请求中包含JWT interceptor 解析得到的用户信息
+     * @param data 请求体中需要包含 highSchoolName, hometown, occupation, motherFullName, fatherFullName
+     * @throws OtherInfoVerificationException 抛出其他信息验证异常则验证失败
+     */
+    @PostMapping("verify/other_info")
+    public ApiResponse otherInfoVerification(HttpServletRequest request, @RequestBody Map<String, String> data) throws OtherInfoVerificationException {
+        Integer userId = Integer.parseInt((String) request.getAttribute("userId"));
+        String highSchoolName = data.get("highSchoolName");
+        String hometown = data.get("hometown");
+        String occupation = data.get("occupation");
+        String motherFullName = data.get("motherFullName");
+        String fatherFullName = data.get("fatherFullName");
+
+        // 检查参数是否为空，如果为空则设置为空字符串
+        if (highSchoolName == null) highSchoolName = "";
+        if (hometown == null) hometown = "";
+        if (occupation == null) occupation = "";
+        if (motherFullName == null) motherFullName = "";
+        if (fatherFullName == null) fatherFullName = "";
+
+        userVerificationService.otherInfoVerification(userId, highSchoolName, hometown, occupation, motherFullName, fatherFullName);
+
+        // 验证通过，设置用户的其他信息验证通过的 cookie
+        Cookie otherInfoVerificationCookie = new Cookie("otherInfoVerification", "true");
+        otherInfoVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        otherInfoVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
+        otherInfoVerificationCookie.setMaxAge(60 * 10); // 10 分钟， 10 分钟内必须提交，否则此验证失效
+        otherInfoVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+
+        return ApiResponse.success("Other info verification success");
+    }
+
+    /**
+     *  激活账号, 根据用户填写的身份验证信息激活账号
+     * @param request 请求中包含JWT interceptor 解析得到的用户信息
+     * @param activationInformation 账户激活信息
+     */
+    @PostMapping("/activate")
+    public ApiResponse activate(HttpServletRequest request, @RequestBody ActivationInformation activationInformation) throws VerificationCodeExpireException, VerificationCodeErrorException, DatabaseOperationException {
+        // 创建用户验证信息，包括验证和插入操作
+        userVerificationService.createUserVerification(activationInformation);
+
+        // 激活账号
+        String email = (String) request.getAttribute("email");
         userService.activateUser(email);
 
-        return ApiResponse.success("Activate " + email + " success");
+        return ApiResponse.success("Activate account" + email + "success");
     }
 
     /**
@@ -133,21 +300,70 @@ public class UserController {
         return ApiResponse.success("The user is currently logged in. The identity will expire at " + formattedExpirationTime + ".");
     }
 
+    private boolean isEqualTrue(String s) {
+        return s != null && s.equals("true");
+    }
+
     /**
-     * 重置密码, 冻结的账户仍然可以重置密码
-     * @param request 请求对象
-     * @param data 包含 email 和 newPassword 两个字段
-     * @return 返回重置密码的结果
-     * @throws UnauthorizedException 非法操作，使用合法token尝试修改其他人的密码会触发此异常
+     * 由系统对账户进行重置密码，需要完成验证：恢复邮箱验证 + 安全问题验证 + 个人信息验证 + 其他信息验证
+     * 此方法无需要经过 JWT interceptor 验证，因为此方法是由系统调用的，不需要验证用户身份
+     * @param request 请求对象, 附带身份验证 cookie
+     * @param data 请求体中需要包含账户的 email
+     * @return 返回系统生成的密码
+     * @throws UnauthorizedException 非法操作，未初始化一个身份验证请求或者未完成身份验证
      * @throws PasswordRepeatException 新密码与旧密码相同
      */
     @PostMapping("/reset_password")
     public ApiResponse resetPassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws UnauthorizedException, PasswordRepeatException {
+        // 检查身份验证请求Cookie
+        String verificationRequest = getCookieValue(request, "verificationRequest"); // 此cookie值为用户邮箱
+        if (verificationRequest == null) {
+            logger.error("Unauthorized operation, the system has not initiated an identity verification request");
+            throw new UnauthorizedException("Unauthorized operation"); // 非法的操作，系统未发起身份验证请求
+        }
+
+        /* 检查是否完成身份验证 */
+        boolean isAuthorized = false;// 是否授权
+        String isRecoveryEmailVerification = getCookieValue(request, "recoveryEmailVerification");
+        String isSecurityQuestionVerification = getCookieValue(request, "securityQuestionVerification");
+        String isPersonalInfoVerification = getCookieValue(request, "personalInfoVerification");
+        String isOtherInfoVerification = getCookieValue(request, "otherInfoVerification");
+        if(isEqualTrue(isRecoveryEmailVerification) &&
+                isEqualTrue(isSecurityQuestionVerification) &&
+                isEqualTrue(isPersonalInfoVerification) &&
+                isEqualTrue(isOtherInfoVerification)) {
+            isAuthorized = true;
+        }
+
+        if(!isAuthorized) {
+            logger.error("Unauthorized operation, the user has not completed identity verification");
+            throw new UnauthorizedException("Unauthorized operation"); // 非法的操作，未完成身份验证没有重置权限
+        }
+
+        // 系统生成重置密码
+        String newPassword = PasswordGenerator.generateSecurePassword(32);
+
+        // 重置密码
+        userService.resetPassword(verificationRequest, newPassword);
+
+        return ApiResponse.success(newPassword);
+    }
+
+    /**
+     * 用户登录状态下重置密码, 冻结的账户仍然可以重置密码
+     * @param request 请求对象
+     * @param data 包含 email 和 newPassword 两个字段
+     * @return 返回重置密码的结果
+     * @throws UnauthorizedException 非法操作，使用合法token尝试修改其他人的密码会触发此异常, 或者未完成身份验证
+     * @throws PasswordRepeatException 新密码与旧密码相同
+     */
+    @PostMapping("/update_password")
+    public ApiResponse updatePassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws UnauthorizedException, PasswordRepeatException {
         String emailFromToken = (String) request.getAttribute("email");
         String email = data.get("email");
         String newPassword = data.get("newPassword");
 
-        // 进行权限校验
+        // 检查 token 的用户与重置密码的账户是否一致
         if (!emailFromToken.equals(email)) {
             // 获取请求来源的IP地址
             String ipAddress = request.getRemoteAddr();
@@ -159,20 +375,49 @@ public class UserController {
             throw new UnauthorizedException("Unauthorized operation");//非法操作
         }
 
-        boolean result = userService.resetPassword(email, newPassword);
-
-        if(result) {
-            return ApiResponse.success("Reset password success");
+        /*
+            检查是否完成身份验证，存在两种密码验证方式
+            1. 密码验证
+            2. 恢复邮箱验证 + 安全问题验证 + 个人信息验证 + 其他信息验证
+         */
+        boolean isAuthorized = false;// 是否授权
+        // 检查是否完成密码验证
+        String isPasswordVerification  = getCookieValue(request, "passwordVerification");
+        if (isEqualTrue(isPasswordVerification)) {
+            isAuthorized = true;
         }
 
-        return ApiResponse.failure(500, "Internal server error");
+        String isRecoveryEmailVerification = getCookieValue(request, "recoveryEmailVerification");
+        String isSecurityQuestionVerification = getCookieValue(request, "securityQuestionVerification");
+        String isPersonalInfoVerification = getCookieValue(request, "personalInfoVerification");
+        String isOtherInfoVerification = getCookieValue(request, "otherInfoVerification");
+        if(isEqualTrue(isRecoveryEmailVerification) &&
+            isEqualTrue(isSecurityQuestionVerification) &&
+            isEqualTrue(isPersonalInfoVerification) &&
+            isEqualTrue(isOtherInfoVerification)) {
+            isAuthorized = true;
+        }
+
+        if(!isAuthorized) {
+            logger.error("Unauthorized update password for email: {}, the user has not completed identity verification", email);
+            throw new UnauthorizedException("Unauthorized update password for email: " + email);
+        }
+
+        userService.resetPassword(email, newPassword);
+
+        return ApiResponse.success("Reset password success");
     }
 
     @PostMapping("/lock_account")
     public ApiResponse lockAccount(HttpServletRequest request, String email, LocalDateTime lockoutUntil){
-        // 检查 token 包含 admin 权限
+        // 检查 token
         String token = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
         DecodedJWT decodedJWT = jwtUtil.verifyToken(token);
+        String jwtEmail = decodedJWT.getClaim("email").asString();
+
+        if(!jwtEmail.equals(email)) {
+            return ApiResponse.failure(403, "Unauthorized operation");
+        }
 
         boolean result = userService.lockAccount(email, lockoutUntil);
 
@@ -183,9 +428,14 @@ public class UserController {
         return ApiResponse.failure(500, "Internal server error");
     }
 
+    /**
+     * 用户注销, 使当前会话的 refresh token 失效
+     * @param request 请求对象，在 cookie 中携带了 refresh token
+     * @return
+     */
     @PostMapping("/logout")
     public ApiResponse logout(HttpServletRequest request) {
-        String refreshToken = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
+        String refreshToken = getCookieValue(request, "refreshToken");
         userService.logout(refreshToken);
 
         return ApiResponse.success("Logout success");
@@ -198,7 +448,7 @@ public class UserController {
      * @throws AuthenticationExpiredException 刷新令牌已过期
      */
     @PostMapping("/new_access_token")
-    public ApiResponse getNewAccessToken(HttpServletRequest request) throws AuthenticationExpiredException,  Exception {
+    public ApiResponse getNewAccessToken(HttpServletRequest request) throws AuthenticationExpiredException {
         // 从 Cookie 中获取 refreshToken
         String refreshToken = getCookieValue(request, "refreshToken");
 
@@ -229,7 +479,7 @@ public class UserController {
 
     /**
      * 获取新的 refresh token
-     * @param request 请求对象，需要在 Authorization 头部携带 refresh token
+     * @param request 请求对象，携带 refreshToken 的cookie
      * @return 返回新的 refresh token
      * @throws AuthenticationExpiredException 刷新令牌已过期
      */

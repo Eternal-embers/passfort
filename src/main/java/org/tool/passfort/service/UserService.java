@@ -44,6 +44,15 @@ public interface UserService {
     void verify(String email, String code, String codeKey) throws VerificationCodeExpireException, VerificationCodeErrorException;
 
     /**
+     * 密码验证，用于重置密码时验证身份
+     * @param email 邮箱地址
+     * @param password 密码
+     * @throws PasswordVerificationException 密码验证失败
+     * @throws VerifyPasswordFailedException 密码验证程序出现错误
+     */
+    void passwordVerification(String email, String password) throws PasswordVerificationException, VerifyPasswordFailedException;
+
+    /**
      * 重置用户密码
      * @param email 邮箱地址
      * @param newPassword 新密码

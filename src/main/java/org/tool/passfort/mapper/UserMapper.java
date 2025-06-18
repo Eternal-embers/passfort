@@ -105,6 +105,12 @@ public interface UserMapper {
     void activateUser(@Param("email") String email);
 
     /**
+     * 获取用户的密码加密信息
+     */
+    @Select("SELECT password_hash FROM users WHERE email = #{email}")
+    byte[] getPasswordHash(@Param("email") String email);
+
+    /**
      * 重置用户密码
      * @param email 邮箱地址
      * @param passwordHash 新的密码哈希值

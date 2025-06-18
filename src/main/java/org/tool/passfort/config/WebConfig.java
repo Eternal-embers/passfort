@@ -24,8 +24,8 @@ public class WebConfig implements WebMvcConfigurer {
                 "/index.html", //后端首页
                 "/api/user/login", //登录
                 "/api/user/register", //注册
-                "/api/user/activate", //激活帐号
-                "/api/user/logout", //注销登录
+                "/api/user/verify/*", // 用户身份验证
+                "/api/user/reset_password", // 重置密码
                 "/api/user/new_access_token",  //获取新的 access token
                 "/api/user/new_refresh_token",  //获取新的 refresh token
                 "/api/user/refresh_token_expiring_soon", //查询 refresh token 是否即将过期

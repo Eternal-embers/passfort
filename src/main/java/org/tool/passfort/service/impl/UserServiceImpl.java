@@ -66,6 +66,9 @@ public class UserServiceImpl implements UserService {
      * 使用默认邮箱注册方式注册账号，根据抛出的不同异常方式判定注册失败的原因
      * @param email 邮箱地址
      * @param password 密码
+     * @throws PasswordHashingException 密码哈希处理失败
+     * @throws DatabaseOperationException 数据库操作失败
+     * @throws EmailAlreadyRegisteredException 邮箱已注册
      */
     @Override
     public void registerUser(String email, String password) throws PasswordHashingException, DatabaseOperationException, EmailAlreadyRegisteredException {
@@ -102,6 +105,11 @@ public class UserServiceImpl implements UserService {
      * @param email 邮箱
      * @param password 密码明文
      * @return JWT token
+     * @throws AccountNotActiveException 账号未激活
+     * @throws AccountLockedException 账号已锁定
+     * @throws UserNotFoundException 用户不存在
+     * @throws VerifyPasswordFailedException 验证密码时出现错误，每 5 次连续失败登录后锁定账户 30 分钟
+     * @throws PasswordInvalidException 密码错误
      */
     @Override
     public LoginResponse loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException {
@@ -179,7 +187,7 @@ public class UserServiceImpl implements UserService {
             int failedLoginAttempts = userMapper.getFailedLoginAttempts(email);
 
             // 如果连续失败登录次数达到阈值的倍数，则锁定账户30分钟
-            if(failedLoginAttempts % 5 == 0) {
+            if(failedLoginAttempts % 10 == 0) {
                 LocalDateTime lockoutUntil = LocalDateTime.now().plusSeconds(LOCKOUT_TIME);
                 userMapper.lockAccount(email, lockoutUntil);
                 // 记录日志，说明锁定账户的原因和具体操作
@@ -226,9 +234,57 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * 密码验证，用于重置密码时验证身份
+     * @param email 邮箱地址
+     * @param password 密码
+     * @throws PasswordVerificationException 密码验证失败
+     * @throws VerifyPasswordFailedException 验证密码时出现错误，每 5 次连续失败登录后锁定账户 30 分钟
+     */
+    public void passwordVerification(String email, String password) throws PasswordVerificationException, VerifyPasswordFailedException {
+        boolean isPasswordValid;
+        try {
+            byte[] passwordHash = userMapper.getPasswordHash(email);
+            isPasswordValid = passwordHasher.verifyPassword(password, passwordHash);
+        } catch (Exception e) {
+            //验证密码时出现错误
+            logger.error("an error occurred while verifying password for email: {}", email);
+            throw new VerifyPasswordFailedException(email);
+        }
+
+        // 更新 redis 中的密码验证错误次数
+        Integer failedVerificationAttempts = 0;
+        if(!isPasswordValid) {
+            logger.error("password verification failed for email: {}", email);
+
+            String passwordVerificationKey = "passwordVerification:" + email;
+
+            // 如果密码验证错误次数不存在，则创建并设置为 1
+            if(!redisUtil.hasKey(passwordVerificationKey)) {
+                redisUtil.setObject(passwordVerificationKey, 1, 30, TimeUnit.MINUTES); // 统计 30 分钟内的密码验证错误次数
+                failedVerificationAttempts = 1;
+            } else {
+                // 如果密码验证错误次数存在，则获取并增加 1
+                failedVerificationAttempts = (Integer) redisUtil.getObject(passwordVerificationKey);
+                redisUtil.setObject(passwordVerificationKey, failedVerificationAttempts + 1, 30, TimeUnit.MINUTES); // 统计 30 分钟内的密码验证错误次数
+
+                // 如果连续失败登录次数达到阈值的倍数，则锁定账户30分钟
+                if(failedVerificationAttempts % 5 == 0) {
+                    LocalDateTime lockoutUntil = LocalDateTime.now().plusSeconds(LOCKOUT_TIME);
+                    userMapper.lockAccount(email, lockoutUntil);
+
+                    logger.info("Account locked due to {} consecutive failed password verification attempts. Account: {}, lockout until: {}", failedVerificationAttempts, email, lockoutUntil);
+                }
+            }
+
+            throw new PasswordVerificationException("Password verification failed", failedVerificationAttempts);
+        }
+    }
+
+    /**
      * 重置用户密码
      * @param email 邮箱地址
      * @param newPassword 新密码
+     * @throws PasswordRepeatException 新密码与旧密码相同
      */
     @Override
     public boolean resetPassword(String email, String newPassword) throws PasswordRepeatException {
@@ -365,7 +421,7 @@ public class UserServiceImpl implements UserService {
      * 使用合法且未过期的 refresh token 来获取新的 refresh token
      * @param refreshToken 刷新令牌
      * @return 新的刷新令牌
-     * @throws AuthenticationExpiredException
+     * @throws AuthenticationExpiredException 刷新令牌已过期
      */
     @Override
     public String getNewRefreshToken(String refreshToken) throws AuthenticationExpiredException {

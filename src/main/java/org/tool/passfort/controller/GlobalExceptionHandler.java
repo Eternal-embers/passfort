@@ -79,8 +79,46 @@ public class GlobalExceptionHandler {
         return ApiResponse.failure(401, e.getMessage(), "Expired");
     }
 
+    @ExceptionHandler(VerificationCodeErrorException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleVerificationCodeErrorException(VerificationCodeErrorException e) {
         return ApiResponse.failure(400, e.getMessage(), "VerificationCodeError");
+    }
+
+    @ExceptionHandler(VerificationCodeExpireException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handleVerificationCodeExpireException(VerificationCodeExpireException e) {
+        return ApiResponse.failure(400, e.getMessage(), "VerificationCodeExpire");
+    }
+
+    @ExceptionHandler(FrequentVerificationCodeRequestException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handleFrequentVerificationCodeRequestException(FrequentVerificationCodeRequestException e) {
+        return ApiResponse.failure(400, e.getMessage(), "FrequentVerificationCodeRequest");
+    }
+
+    @ExceptionHandler(SecurityQuestionVerificationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handleSecurityQuestionVerificationException(SecurityQuestionVerificationException e) {
+        return ApiResponse.failure(400, e.getMessage(), e.getErrorQuestionIndex()); // 返回错误问题的索引
+    }
+
+    @ExceptionHandler(PersonalInfoVerificationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handlePersonalInfoVerificationException(PersonalInfoVerificationException e) {
+        return ApiResponse.failure(400, e.getMessage(), e.getErrorParam()); // 返回错误字段
+    }
+
+    @ExceptionHandler(OtherInfoVerificationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handleOtherInfoVerificationException(OtherInfoVerificationException e) {
+        return ApiResponse.failure(400, e.getMessage(), e.getErrorParam()); // 返回错误字段
+    }
+
+    @ExceptionHandler(PasswordVerificationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse handlePasswordVerificationException(PasswordVerificationException e) {
+        return ApiResponse.failure(400, e.getMessage(), e.getFailedVerificationAttempts());
     }
 
     // 捕获所有未明确处理的异常
