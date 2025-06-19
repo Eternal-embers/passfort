@@ -191,6 +191,14 @@
             <artifactId>javase</artifactId>
             <version>3.5.3</version>
         </dependency>
+
+        <!-- 解析HTTP请求中的UserAgent的工具库 -->
+        <!-- https://mvnrepository.com/artifact/com.github.ua-parser/uap-java -->
+        <dependency>
+            <groupId>com.github.ua-parser</groupId>
+            <artifactId>uap-java</artifactId>
+            <version>1.6.1</version>
+        </dependency>
     </dependencies>
 
     <build>

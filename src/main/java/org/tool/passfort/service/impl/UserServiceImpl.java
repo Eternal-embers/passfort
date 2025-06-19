@@ -159,7 +159,7 @@ public class UserServiceImpl implements UserService {
             // 创建 refresh token
             Map<String, String> refreshClaims = new HashMap<>();
             String uniqueSuffix = UUID.randomUUID().toString(); // 使用 UUID 生成唯一后缀
-            String key = generateRefreshTokenKey(String.valueOf(userId), uniqueSuffix);; // 生成 refresh token 的 key
+            String key = generateRefreshTokenKey(String.valueOf(userId), uniqueSuffix); // 生成 refresh token 的 key
 
             refreshClaims.put("email", user.getEmail());
             refreshClaims.put("tokenType", "refresh");
@@ -448,7 +448,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 删除旧的 refresh token
-        redisUtil.deleteString(oldKey);
+        redisUtil.delete(oldKey);
 
         // 创建新的 refresh token
         Map<String, String> refreshClaims = new HashMap<>();
@@ -479,7 +479,7 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 注销用户，删除 refresh token
-     * @param refreshToken
+     * @param refreshToken 刷新令牌
      */
     @Override
     public void logout(String refreshToken) {
@@ -492,7 +492,7 @@ public class UserServiceImpl implements UserService {
             logger.warn("[Logout] Refresh token has expired or has been revoked.");
         } else {
             // 删除 refresh token
-            redisUtil.deleteString(oldKey);
+            redisUtil.delete(oldKey);
         }
     }
 

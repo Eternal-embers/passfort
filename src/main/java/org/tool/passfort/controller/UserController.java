@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.tool.passfort.exception.*;
 import org.tool.passfort.dto.LoginResponse;
 import org.tool.passfort.model.ActivationInformation;
+import org.tool.passfort.model.ClientDeviceInfo;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.dto.ApiResponse;
 import org.tool.passfort.service.UserVerificationService;
@@ -365,13 +366,15 @@ public class UserController {
 
         // 检查 token 的用户与重置密码的账户是否一致
         if (!emailFromToken.equals(email)) {
-            // 获取请求来源的IP地址
-            String ipAddress = request.getRemoteAddr();
+            // 获取设备信息拦截器中获取 ip 地址
+            ClientDeviceInfo deviceInfo = (ClientDeviceInfo)request.getAttribute("clientDeviceInfo");
+            String ipAddress = deviceInfo.getIpAddress();
+
             // 获取User-Agent信息
             String userAgent = request.getHeader("User-Agent");
 
-            logger.error("Unauthorized attempt to reset password for user: {} from IP address: {}. Requested email: {}. User-Agent: {}",
-                    emailFromToken, ipAddress, email, userAgent);
+            logger.error("Unauthorized attempt to reset password for user: {} from IP address: {}. Requested email: {}. Device info: {}",
+                    emailFromToken, ipAddress, email, deviceInfo);
             throw new UnauthorizedException("Unauthorized operation");//非法操作
         }
 
