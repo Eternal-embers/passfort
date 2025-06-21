@@ -2,6 +2,7 @@ package org.tool.passfort.controller;
 
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import jakarta.servlet.http.HttpServletRequest;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/credential")
+@SuppressWarnings("rawtypes") // 消除ApiResponse的原始类型警告
 public class CredentialController {
     private final CredentialService credentialService;
     private final AesUtil aesUtil;
@@ -58,11 +60,18 @@ public class CredentialController {
         return ApiResponse.success(credentials);
     }
 
+    /**
+     * 获取指定加密信息的密码
+     * @param request 请求体中需要包含 userId 和 encryptionId， 以及 credentialId 用于统计密码查看次数
+     * @param data 请求体中需要包含 encryptionId
+     * @return 自定义加密后的密码，需要在前端解密
+     * @throws Exception 解密异常
+     */
     @PostMapping("/view")
     public ApiResponse viewPassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws Exception {
         String userId = (String) request.getAttribute("userId");
         String encryptionId = data.get("encryptionId");
-        String password = credentialService.getPassword(Integer.valueOf(userId), Integer.valueOf(encryptionId));
+        String password = credentialService.getPassword(Integer.parseInt(userId), Integer.parseInt(encryptionId));
 
         // 对密码进行混淆加密
         byte[] encryptedPassword = aesUtil.encrypt(password);//iv, key, encryptedPassword的组合, 64字节
@@ -74,7 +83,7 @@ public class CredentialController {
     /**
      * 发送邮件，邮件中包含密码信息的二维码
      * @param request 请求对象
-     * @param data 请求体中需要包含 encryptionId
+     * @param data 请求体中需要包含 encryptionId, 以及 credentialId 用于统计密码查看次数
      * @return 返回信息 ID
      */
     @PostMapping("/view/qr")

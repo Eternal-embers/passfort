@@ -87,6 +87,6 @@ public class ApplicationInfoServiceImpl implements ApplicationInfoService {
 
 
     public String getRedisVersion() {
-        return redisUtil.getVersion();
+        return "Version" +redisUtil.getVersion();
     }
 }

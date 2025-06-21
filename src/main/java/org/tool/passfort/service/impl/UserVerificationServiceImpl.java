@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.tool.passfort.exception.*;
-import org.tool.passfort.mapper.UserMapper;
 import org.tool.passfort.mapper.UserVerificationMapper;
 import org.tool.passfort.model.ActivationInformation;
 import org.tool.passfort.model.UserVerification;
@@ -23,13 +22,11 @@ public class UserVerificationServiceImpl implements UserVerificationService {
     private static final Logger logger = LoggerFactory.getLogger(UserVerificationServiceImpl.class);
     private final UserVerificationMapper userVerificationMapper;
     private final RedisUtil redisUtil;
-    private final UserMapper userMapper;
 
     @Autowired
-    public UserVerificationServiceImpl(UserVerificationMapper userVerificationMapper, RedisUtil redisUtil, UserMapper userMapper){
+    public UserVerificationServiceImpl(UserVerificationMapper userVerificationMapper, RedisUtil redisUtil){
         this.userVerificationMapper = userVerificationMapper;
         this.redisUtil = redisUtil;
-        this.userMapper = userMapper;
     }
 
     @Override
@@ -47,7 +44,7 @@ public class UserVerificationServiceImpl implements UserVerificationService {
         }
 
         //检查验证码是否正确
-        String verificationInfo = redisUtil.getString(codeKey);// 验证信息的格式为"邮箱:验证码"
+        String verificationInfo = (String) redisUtil.get(codeKey);// 验证信息的格式为"邮箱:验证码"
         if(!verificationInfo.equals(recoveryEmail + ":" + verificationCode)) {
             logger.error("verification code error for codeKey: {}", codeKey);
             throw new VerificationCodeErrorException("Verification code error");
@@ -127,7 +124,7 @@ public class UserVerificationServiceImpl implements UserVerificationService {
         }
 
         //检查验证码是否正确
-        String verificationInfo = redisUtil.getString(codeKey);// 验证信息的格式为"邮箱:验证码"
+        String verificationInfo = (String) redisUtil.get(codeKey);// 验证信息的格式为"邮箱:验证码"
         if(!verificationInfo.equals(recoveryEmail + ":" + verificationCode)) {
             logger.error("verification code error for codeKey: {}", codeKey);
             throw new VerificationCodeErrorException("Verification code error");

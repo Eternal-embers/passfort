@@ -12,6 +12,7 @@ import org.tool.passfort.dto.LoginResponse;
 import org.tool.passfort.model.User;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.util.encrypt.AesUtil;
+import org.tool.passfort.util.encrypt.ShuffleEncryption;
 import org.tool.passfort.util.jwt.JwtUtil;
 import org.tool.passfort.util.redis.RedisUtil;
 import org.tool.passfort.util.secure.PasswordHasher;
@@ -28,6 +29,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordHasher passwordHasher;
     private final JwtUtil jwtUtil;
     private final RedisUtil redisUtil;
+    private final AesUtil aesUtil;
 
     // 常量
     private static final String REFRESH_TOKEN_KEY_PREFIX = "refreshToken:";
@@ -36,7 +38,6 @@ public class UserServiceImpl implements UserService {
     private static final long LOCKOUT_TIME = 1800; // 30分钟
     private static final long REFRESH_TOKEN_EXPIRING_SOON_THRESHOLD = 3600; // 1小时
     private final static int[] SHUFFLE_ORDER = {2, 14, 15, 6, 8, 9, 12, 4, 10, 11, 3, 13, 0, 7, 1, 5};
-    private final AesUtil aesUtil;
 
     @Autowired
     public UserServiceImpl(UserMapper userMapper, PasswordHasher passwordHasher, JwtUtil jwtUtil, RedisUtil redisUtil, AesUtil aesUtil) {
@@ -59,7 +60,12 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return Base64.getEncoder().encodeToString(encryptedData);
+
+        // 分片混淆
+        byte[] shuffledEncryptedData = ShuffleEncryption.shuffleEncrypt(encryptedData, SHUFFLE_ORDER);
+
+        // BASE64编码
+        return Base64.getEncoder().encodeToString(shuffledEncryptedData);
     }
 
     /**
@@ -168,7 +174,7 @@ public class UserServiceImpl implements UserService {
             String refreshToken =  jwtUtil.createToken(userId.toString(), refreshClaims, REFRESH_TOKEN_EXPIRE_TIME);//7天过期
 
             // 存储Refresh token到redis
-            redisUtil.setString(key, refreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
+            redisUtil.set(key, refreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
 
             // 更新用户的最后登录时间
             userMapper.updateLastLogin(email);
@@ -206,7 +212,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public String getRefreshTokenByUserId(int userId, String refreshTokenKey) {
-        return redisUtil.getString(refreshTokenKey);
+        return (String) redisUtil.get(refreshTokenKey);
     }
 
     /**
@@ -226,7 +232,7 @@ public class UserServiceImpl implements UserService {
         }
 
         //检查验证码是否正确
-        String verificationInfo = redisUtil.getString(codeKey);// 验证信息的格式为"邮箱:验证码"
+        String verificationInfo = (String) redisUtil.get(codeKey);// 验证信息的格式为"邮箱:验证码"
         if(!verificationInfo.equals(email + ":" + code)) {
             logger.error("verification code error for codeKey: {}", codeKey);
             throw new VerificationCodeErrorException("Verification code error");
@@ -252,7 +258,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 更新 redis 中的密码验证错误次数
-        Integer failedVerificationAttempts = 0;
+        Integer failedVerificationAttempts;
         if(!isPasswordValid) {
             logger.error("password verification failed for email: {}", email);
 
@@ -260,12 +266,12 @@ public class UserServiceImpl implements UserService {
 
             // 如果密码验证错误次数不存在，则创建并设置为 1
             if(!redisUtil.hasKey(passwordVerificationKey)) {
-                redisUtil.setObject(passwordVerificationKey, 1, 30, TimeUnit.MINUTES); // 统计 30 分钟内的密码验证错误次数
+                redisUtil.set(passwordVerificationKey, 1, 30, TimeUnit.MINUTES); // 统计 30 分钟内的密码验证错误次数
                 failedVerificationAttempts = 1;
             } else {
                 // 如果密码验证错误次数存在，则获取并增加 1
-                failedVerificationAttempts = (Integer) redisUtil.getObject(passwordVerificationKey);
-                redisUtil.setObject(passwordVerificationKey, failedVerificationAttempts + 1, 30, TimeUnit.MINUTES); // 统计 30 分钟内的密码验证错误次数
+                failedVerificationAttempts = (Integer) redisUtil.get(passwordVerificationKey);
+                redisUtil.set(passwordVerificationKey, failedVerificationAttempts + 1, 30, TimeUnit.MINUTES); // 统计 30 分钟内的密码验证错误次数
 
                 // 如果连续失败登录次数达到阈值的倍数，则锁定账户30分钟
                 if(failedVerificationAttempts % 5 == 0) {
@@ -463,7 +469,7 @@ public class UserServiceImpl implements UserService {
         logger.info("[GetNewRefreshToken] key: {}, email: {}, userId: {}", newKey, email, userId);
 
         // 存储Refresh token到redis
-        redisUtil.setString(newKey, newRefreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
+        redisUtil.set(newKey, newRefreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
 
         return newRefreshToken;
     }

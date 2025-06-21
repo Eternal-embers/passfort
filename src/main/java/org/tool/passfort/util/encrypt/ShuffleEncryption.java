@@ -1,5 +1,7 @@
 package org.tool.passfort.util.encrypt;
 import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Scanner;
 
 public class ShuffleEncryption {
     /**
@@ -95,5 +97,22 @@ public class ShuffleEncryption {
         }
 
         return originalData;
+    }
+
+    public static void main(String[] args) throws Exception {
+        // 对 AES 加密并分片混淆加密的 refreshToken 进行解密
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("> ");
+        String base64Encrypted = scanner.nextLine();
+
+        int [] order = {2, 14, 15, 6, 8, 9, 12, 4, 10, 11, 3, 13, 0, 7, 1, 5};
+        byte[] shuffledEncryptedData = Base64.getDecoder().decode(base64Encrypted);
+        byte[] unshuffledEncryptedData = ShuffleEncryption.shuffleDecrypt(shuffledEncryptedData, order);
+
+        // AES 解密
+        AesUtil aesUtil = new AesUtil();
+        String refreshToken = aesUtil.decrypt(unshuffledEncryptedData);
+
+        System.out.println(refreshToken);
     }
 }

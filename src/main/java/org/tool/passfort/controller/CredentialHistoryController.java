@@ -25,6 +25,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/credential_history")
+@SuppressWarnings("rawtypes") // 消除ApiResponse的原始类型警告
 public class CredentialHistoryController {
     private final CredentialHistoryService credentialHistoryService;
     private final AesUtil aesUtil;

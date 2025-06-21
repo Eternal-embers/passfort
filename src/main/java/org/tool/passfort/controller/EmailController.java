@@ -11,10 +11,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.tool.passfort.dto.ApiResponse;
 import org.tool.passfort.dto.VerifyResponse;
 import org.tool.passfort.exception.FrequentVerificationCodeRequestException;
+import org.tool.passfort.model.ClientDeviceInfo;
 import org.tool.passfort.service.EmailService;
 import org.tool.passfort.service.UserService;
-import org.tool.passfort.util.jwt.JwtUtil;
 import org.tool.passfort.util.redis.RedisUtil;
+import org.tool.passfort.util.ua.UserAgentUtil;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,12 +27,12 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/mail")
+@SuppressWarnings("rawtypes") // 消除ApiResponse的原始类型警告
 public class EmailController {
     private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
     private final EmailService emailService;
-    private final UserService userService;
     private final RedisUtil redisUtil;
-    private final JwtUtil jwtUtil;
+    private final UserService userService;
 
     // 常量
     private final String VERIFICATION_CODE_PREFIX = "verificationCode:"; // 验证码的 redis 键前缀
@@ -39,11 +40,10 @@ public class EmailController {
     private final long VERIFICATION_CODE_EXPIRE_TIME = 300; // 验证码有效期，5 分钟
 
     @Autowired
-    public EmailController(EmailService emailService, UserService userService, RedisUtil redisUtil, JwtUtil jwtUtil) {
+    public EmailController(EmailService emailService, RedisUtil redisUtil, UserService userService) {
         this.emailService = emailService;
-        this.userService = userService;
         this.redisUtil = redisUtil;
-        this.jwtUtil = jwtUtil;
+        this.userService = userService;
     }
 
     // 生成6位随机验证码，包含数字和大小写字母
@@ -56,6 +56,56 @@ public class EmailController {
         return new String(code);
     }
 
+    // 设置模板参数
+    private Map<String, Object> getTemplateVariables(ClientDeviceInfo deviceInfo, String verificationCode, String operationType) {
+        Map<String, Object> templateVariables = new HashMap<>();
+        String operationTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        templateVariables.put("operationType", operationType);
+        templateVariables.put("ipAddress", deviceInfo.getIpAddress());
+        templateVariables.put("deviceType", deviceInfo.getDeviceType());
+        templateVariables.put("osName", deviceInfo.getOsName());
+        templateVariables.put("osVersion", deviceInfo.getOsVersion());
+        templateVariables.put("browserName", deviceInfo.getBrowserName());
+        templateVariables.put("browserVersion", deviceInfo.getBrowserVersion());
+        templateVariables.put("operationTime", operationTime);
+        templateVariables.put("verificationCode", verificationCode);
+
+        return templateVariables;
+    }
+
+    @PostMapping("/register_verify")
+    public ApiResponse sendRegisterEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException {
+        String email = data.get("email");
+
+        // 获取客户端设备信息
+        ClientDeviceInfo deviceInfo = (ClientDeviceInfo) request.getAttribute("clientDeviceInfo");
+
+        // 检查是否间隔超过一分钟再请求验证码，防止恶意攻击
+        String lastRequestTimeKey =  VERIFICATION_CODE_REQUEST_TIME_PREFIX + email;
+        String operationTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        long remainingExpireTime = redisUtil.getExpire(lastRequestTimeKey); // 剩余过期时间（秒)
+        if(remainingExpireTime > VERIFICATION_CODE_EXPIRE_TIME - 60){
+            logger.error("Request verification code too frequently for email: {} from IP address: {}",  email, deviceInfo.getIpAddress());//验证码请求间隔异常，疑似恶意攻击
+            throw new FrequentVerificationCodeRequestException(email, deviceInfo.getIpAddress());
+        }
+        redisUtil.set(lastRequestTimeKey, operationTime, VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS); // 记录最新的验证码请求时间
+
+        // 将验证码存储到 redis
+        String verificationCode = getVerificationCode(); // 生成验证码
+        String codeKey = VERIFICATION_CODE_PREFIX + ":" + UUID.randomUUID();
+        String verificationInfo = email + ":" + verificationCode;// 验证信息的格式为"邮箱:验证码"
+        redisUtil.set(codeKey, verificationInfo , VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS);
+
+        // 设置模板参数
+        Map<String, Object> templateVariables = getTemplateVariables(deviceInfo, verificationCode, "register");
+
+        // 发送邮件
+        emailService.sendEmailWithTemplate(email, "PassFort 邮箱验证", "auth.html", templateVariables);
+
+        return ApiResponse.success(new VerifyResponse(verificationCode, codeKey));
+    }
+
     /**
      * 发送邮箱验证码，重新请求至少需要间隔一分钟
      * @param request 包含 JWT interceptor 解析的用户信息
@@ -64,44 +114,35 @@ public class EmailController {
      */
     @PostMapping("/verify")
     public ApiResponse sendVerificationEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException {
+        // 获取请求参数
         String email = data.get("email");
         String operationType = data.get("operationType");
+        int userId = userService.getUserId(email);
 
-        int userId = Integer.parseInt((String) request.getAttribute("userId"));
-
-        // 收集请求信息用于邮件提示
-        String ipAddress = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
-        String operationTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        // 获取客户端设备信息
+        ClientDeviceInfo deviceInfo = (ClientDeviceInfo) request.getAttribute("clientDeviceInfo");
 
         // 检查是否间隔超过一分钟再请求验证码，防止恶意攻击
-        String lastRequestTimeKey =  VERIFICATION_CODE_REQUEST_TIME_PREFIX + userId;
-        long remaingExpireTime = redisUtil.getExpire(lastRequestTimeKey); // 剩余过期时间（秒)
-        if(remaingExpireTime > VERIFICATION_CODE_EXPIRE_TIME - 60){
-            logger.error("Request verification code too frequently for email: {} from IP address: {}. User-Agent: {}",  email, ipAddress, userAgent);//验证码请求间隔异常，疑似恶意攻击
-            throw new FrequentVerificationCodeRequestException(email, ipAddress, userAgent);
+        String lastRequestTimeKey =  VERIFICATION_CODE_REQUEST_TIME_PREFIX + email;
+        String operationTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        long remainingExpireTime = redisUtil.getExpire(lastRequestTimeKey); // 剩余过期时间（秒)
+        if(remainingExpireTime > VERIFICATION_CODE_EXPIRE_TIME - 60){
+            logger.error("Request verification code too frequently for email: {} from IP address: {}",  email, deviceInfo.getIpAddress());//验证码请求间隔异常，疑似恶意攻击
+            throw new FrequentVerificationCodeRequestException(email, deviceInfo.getIpAddress());
         }
+        redisUtil.set(lastRequestTimeKey, operationTime, VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS); // 记录最新的验证码请求时间
 
-        // 生成验证码
-        String verificationCode = getVerificationCode();
-
-        // 将验证码存储到 redis， 并记录发起请求的时间
+        // 将验证码存储到 redis
+        String verificationCode = getVerificationCode(); // 生成验证码
         String codeKey = VERIFICATION_CODE_PREFIX  + userId + ":" + UUID.randomUUID();
         String verificationInfo = email + ":" + verificationCode;// 验证信息的格式为"邮箱:验证码"
-        redisUtil.setString(codeKey, verificationInfo , VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS);
+        redisUtil.set(codeKey, verificationInfo , VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS); // 将验证码存储到 redis
 
-        // 记录最新的验证码请求时间，防止恶意攻击
-        redisUtil.setString(lastRequestTimeKey, operationTime, VERIFICATION_CODE_EXPIRE_TIME, TimeUnit.SECONDS);
+        // 设置模板参数
+        Map<String, Object> templateVariables = getTemplateVariables(deviceInfo, verificationCode, operationType);
 
-        Map<String, Object> templateVariables = new HashMap<>();
-        String templatePath = "auth.html";
-
-        templateVariables.put("operationType", operationType);
-        templateVariables.put("deviceInfo", userAgent);
-        templateVariables.put("ipAddress", ipAddress);
-        templateVariables.put("operationTime", operationTime);
-        templateVariables.put("verificationCode", verificationCode);
-        emailService.sendEmailWithTemplate(email, "PassFort 邮箱验证", templatePath, templateVariables);
+        // 发送邮件
+        emailService.sendEmailWithTemplate(email, "PassFort 邮箱验证", "auth.html", templateVariables);
 
         return ApiResponse.success(new VerifyResponse(verificationCode, codeKey));
     }

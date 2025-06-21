@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 
 @ControllerAdvice
 @ResponseBody
+@SuppressWarnings("rawtypes") // 消除ApiResponse的原始类型警告
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -91,12 +92,6 @@ public class GlobalExceptionHandler {
         return ApiResponse.failure(400, e.getMessage(), "VerificationCodeExpire");
     }
 
-    @ExceptionHandler(FrequentVerificationCodeRequestException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiResponse handleFrequentVerificationCodeRequestException(FrequentVerificationCodeRequestException e) {
-        return ApiResponse.failure(400, e.getMessage(), "FrequentVerificationCodeRequest");
-    }
-
     @ExceptionHandler(SecurityQuestionVerificationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleSecurityQuestionVerificationException(SecurityQuestionVerificationException e) {
@@ -127,6 +122,6 @@ public class GlobalExceptionHandler {
     public ApiResponse handleException(Exception e) {
         // 打印异常类型、异常消息和堆栈跟踪的首行
         logger.error("Unhandled exception: {} - {} - {}", e.getClass().getName(), e.getMessage(), e.getStackTrace()[0].toString());
-        return ApiResponse.failure(500, "Unexpected error occurred: " + e.getMessage());
+        return ApiResponse.failure(500, "Unexpected error occurred");
     }
 }

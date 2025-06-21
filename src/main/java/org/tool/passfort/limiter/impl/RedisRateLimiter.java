@@ -1,6 +1,7 @@
 package org.tool.passfort.limiter.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.tool.passfort.limiter.RateLimiter;
 import org.tool.passfort.util.redis.RedisUtil;
@@ -8,9 +9,10 @@ import org.tool.passfort.util.redis.RedisUtil;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@Order(1)
 public class RedisRateLimiter implements RateLimiter {
     private final RedisUtil redisUtil;
-    private final int maxRequestsPerMinute = 30;// 每分钟最大请求次数
+    private final int maxRequestsPerMinute = 10;// 每分钟最大请求次数
 
     @Autowired
     public RedisRateLimiter(RedisUtil redisUtil) {

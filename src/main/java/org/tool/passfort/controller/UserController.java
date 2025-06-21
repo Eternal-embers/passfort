@@ -65,21 +65,21 @@ public class UserController {
     }
 
     /**
-     * 生成身份验证请求，用于在 Cookie 中设置用户身份
+     * 创建 Https Only Cookie
+     * @param name cookie名称
+     * @param value cookie值
+     * @param maxAge 有效期（秒）
+     * @param path cookie路径，即path所在的url都会携带此Cookie，以客户端的url为准
+     * @return 返回创建的Cookie
      */
-    @PostMapping("/generate_verification_request")
-    public ApiResponse generateVerificationRequest(@RequestBody Map<String, String> data, HttpServletResponse response) {
-        String email = data.get("email");
+    private Cookie createCookie(String name, String value, int maxAge, String path){
+        Cookie cookie = new Cookie(name, value);
+        cookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
+        cookie.setSecure(true); // 设置为 Secure，仅在 HTTPS 连接中传输
+        cookie.setMaxAge(maxAge); // 设置有效期
+        cookie.setPath(path); // 设置路径
 
-        Cookie verificationRequestCookie = new Cookie("verificationRequest", email);
-        verificationRequestCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        verificationRequestCookie.setSecure(true); // 设置为 Secure，仅在 HTTPS 连接中传输
-        verificationRequestCookie.setMaxAge(60 * 30); // 有效期为 30 分钟，身份验证必须在 30 分钟完成
-        verificationRequestCookie.setPath("/"); // 设置路径为根路径，确保在整个应用中有效
-
-        response.addCookie(verificationRequestCookie);
-
-        return ApiResponse.success("Generate verification request success");
+        return cookie;
     }
 
     /**
@@ -97,14 +97,23 @@ public class UserController {
         userService.passwordVerification(email, password);
 
         // 验证通过，设置用户的密码验证通过的 cookie
-        Cookie passwordVerificationCookie = new Cookie("passwordVerification", "true");
-        passwordVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        passwordVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
-        passwordVerificationCookie.setMaxAge(60 * 10); // 10 分钟， 10 分钟内有权限重置密码，否则此验证失效
-        passwordVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        Cookie passwordVerificationCookie = createCookie("passwordVerification", "true", 60 * 10, "/");
         response.addCookie(passwordVerificationCookie);
 
         return ApiResponse.success("Password verification success");
+    }
+
+    /**
+     * 生成身份验证请求，用于在 Cookie 中设置用户身份, 身份验证请求需要在 30 分钟内完成，否则此验证失效
+     */
+    @PostMapping("/generate_verification_request")
+    public ApiResponse generateVerificationRequest(@RequestBody Map<String, String> data, HttpServletResponse response) {
+        String email = data.get("email");
+
+        Cookie verificationRequestCookie = createCookie("verificationRequest", email, 60 * 30, "/");
+        response.addCookie(verificationRequestCookie);
+
+        return ApiResponse.success("Generate verification request success");
     }
 
     /**
@@ -121,12 +130,8 @@ public class UserController {
 
         userVerificationService.recoveryEmailVerification(userId, verificationCode, codeKey);
 
-        // 验证通过，设置用户的恢复邮箱验证通过的 cookie
-        Cookie recoveryEmailVerificationCookie = new Cookie("recoveryEmailVerification", "true");
-        recoveryEmailVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        recoveryEmailVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
-        recoveryEmailVerificationCookie.setMaxAge(60 * 30); // 30 分钟， 30 分钟内必须完成其他验证，否则此验证失效
-        recoveryEmailVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        // 验证通过，设置用户的恢复邮箱验证通过的 cookie, 30 分钟内必须完成其他验证，否则此验证失效
+        Cookie recoveryEmailVerificationCookie = createCookie("recoveryEmailVerification", "true", 60 * 30, "/");
         response.addCookie(recoveryEmailVerificationCookie);
 
         return ApiResponse.success("Recovery email verification success");
@@ -147,12 +152,8 @@ public class UserController {
 
         userVerificationService.securityQuestionVerification(userId, securityAnswer1, securityAnswer2, securityAnswer3);
 
-        // 验证通过，设置用户的安全问题验证通过的 cookie
-        Cookie securityQuestionVerificationCookie = new Cookie("securityQuestionVerification", "true");
-        securityQuestionVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        securityQuestionVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
-        securityQuestionVerificationCookie.setMaxAge(60 * 20); // 20 分钟， 20 分钟内必须完成其他验证，否则此验证失效
-        securityQuestionVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        // 验证通过，设置用户的安全问题验证通过的 cookie, 20 分钟内必须完成其他验证，否则此验证失效
+        Cookie securityQuestionVerificationCookie = createCookie("securityQuestionVerification", "true", 60 * 20, "/");
         response.addCookie(securityQuestionVerificationCookie);
 
         return ApiResponse.success("Security question verification success");
@@ -173,12 +174,8 @@ public class UserController {
 
         userVerificationService.personalInfoVerification(userId, fullName, idCardNumber, phoneNumber);
 
-        // 验证通过，设置用户的个人信息验证通过的 cookie
-        Cookie personalInfoVerificationCookie = new Cookie("personalInfoVerification", "true");
-        personalInfoVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        personalInfoVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
-        personalInfoVerificationCookie.setMaxAge(60 * 15); // 15 分钟， 15 分钟内必须完成其他验证，否则此验证失效
-        personalInfoVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        // 验证通过，设置用户的个人信息验证通过的 cookie, 15 分钟内必须完成其他验证，否则此验证失效
+        Cookie personalInfoVerificationCookie = createCookie("personalInfoVerification", "true", 60 * 15, "/");
         response.addCookie(personalInfoVerificationCookie);
 
         return ApiResponse.success("Personal info verification success");
@@ -191,7 +188,7 @@ public class UserController {
      * @throws OtherInfoVerificationException 抛出其他信息验证异常则验证失败
      */
     @PostMapping("verify/other_info")
-    public ApiResponse otherInfoVerification(HttpServletRequest request, @RequestBody Map<String, String> data) throws OtherInfoVerificationException {
+    public ApiResponse otherInfoVerification(HttpServletRequest request, HttpServletResponse response, @RequestBody Map<String, String> data) throws OtherInfoVerificationException {
         Integer userId = Integer.parseInt((String) request.getAttribute("userId"));
         String highSchoolName = data.get("highSchoolName");
         String hometown = data.get("hometown");
@@ -208,12 +205,9 @@ public class UserController {
 
         userVerificationService.otherInfoVerification(userId, highSchoolName, hometown, occupation, motherFullName, fatherFullName);
 
-        // 验证通过，设置用户的其他信息验证通过的 cookie
-        Cookie otherInfoVerificationCookie = new Cookie("otherInfoVerification", "true");
-        otherInfoVerificationCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        otherInfoVerificationCookie.setSecure(true);  // 设置为 Secure，仅在 HTTPS 连接中传输
-        otherInfoVerificationCookie.setMaxAge(60 * 10); // 10 分钟， 10 分钟内必须提交，否则此验证失效
-        otherInfoVerificationCookie.setPath("/");  // 设置路径为根路径，确保在整个应用中有效
+        // 验证通过，设置用户的其他信息验证通过的 cookie, 5 分钟内必须提交，否则此验证失效
+        Cookie otherInfoVerificationCookie = createCookie("otherInfoVerification", "true", 60 * 5,"/");
+        response.addCookie(otherInfoVerificationCookie);
 
         return ApiResponse.success("Other info verification success");
     }
@@ -224,7 +218,7 @@ public class UserController {
      * @param activationInformation 账户激活信息
      */
     @PostMapping("/activate")
-    public ApiResponse activate(HttpServletRequest request, @RequestBody ActivationInformation activationInformation) throws VerificationCodeExpireException, VerificationCodeErrorException, DatabaseOperationException {
+    public ApiResponse activate(HttpServletRequest request, @RequestBody ActivationInformation activationInformation) throws VerificationCodeExpireException, VerificationCodeErrorException {
         // 创建用户验证信息，包括验证和插入操作
         userVerificationService.createUserVerification(activationInformation);
 
@@ -263,13 +257,9 @@ public class UserController {
             userService.verify(email, code, codeKey);
         }
 
-        // 将 refreshToken 信息写入到 HttpOnly 的 Cookie 中
+        // 将 refreshToken 信息写入到 HttpOnly 的 Cookie 中, Cookie 有效期为 7 天
         String refreshToken = userService.getRefreshTokenByUserId(loginResponse.getUserId(),  loginResponse.getRefreshTokenKey()); // 从 redis 中获取 refresh token
-        Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
-        refreshTokenCookie.setHttpOnly(true); // 设置为 HttpOnly，防止通过 JavaScript 访问
-        refreshTokenCookie.setSecure(true); // 设置为 Secure，仅在 HTTPS 连接中传输
-        refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 7 天
-        refreshTokenCookie.setPath("/"); // 设置路径为根路径，确保在整个应用中有效
+        Cookie refreshTokenCookie = createCookie("refreshToken", refreshToken, 60 * 60 * 24 * 7, "/");
         response.addCookie(refreshTokenCookie);
 
         return ApiResponse.success(loginResponse);
@@ -281,6 +271,7 @@ public class UserController {
         // 解析 jwt token
         String token = request.getHeader("Authorization").substring(7); // 去掉 "Bearer " 前缀
         DecodedJWT decodedJWT = jwtUtil.verifyToken(token);
+        String email = decodedJWT.getClaim("email").asString();
 
         // 获取 JWT 的格式化过期时间
         Date expirationDate = decodedJWT.getExpiresAt();
@@ -290,8 +281,7 @@ public class UserController {
         String formattedExpirationTime = localDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         // 检查帐号是否被冻结
-        boolean isLocked = userService.isAccountLocked(request.getAttribute("email").toString());
-        String email = decodedJWT.getClaim("email").asString();
+        boolean isLocked = userService.isAccountLocked(email);
         if(isLocked) {
             LocalDateTime lockoutUntil = userService.getLockoutUntil(email);
             return ApiResponse.failure(403, "Account " + email + " is locked. Lockout until: " + lockoutUntil);
@@ -306,23 +296,11 @@ public class UserController {
     }
 
     /**
-     * 由系统对账户进行重置密码，需要完成验证：恢复邮箱验证 + 安全问题验证 + 个人信息验证 + 其他信息验证
-     * 此方法无需要经过 JWT interceptor 验证，因为此方法是由系统调用的，不需要验证用户身份
-     * @param request 请求对象, 附带身份验证 cookie
-     * @param data 请求体中需要包含账户的 email
-     * @return 返回系统生成的密码
-     * @throws UnauthorizedException 非法操作，未初始化一个身份验证请求或者未完成身份验证
-     * @throws PasswordRepeatException 新密码与旧密码相同
+     * 是否完成多因素身份验证
+     * @param request Http 请求携带多因素身份验证的 cookie
+     * @return 返回是否完成多因素身份验证
      */
-    @PostMapping("/reset_password")
-    public ApiResponse resetPassword(HttpServletRequest request, @RequestBody Map<String, String> data) throws UnauthorizedException, PasswordRepeatException {
-        // 检查身份验证请求Cookie
-        String verificationRequest = getCookieValue(request, "verificationRequest"); // 此cookie值为用户邮箱
-        if (verificationRequest == null) {
-            logger.error("Unauthorized operation, the system has not initiated an identity verification request");
-            throw new UnauthorizedException("Unauthorized operation"); // 非法的操作，系统未发起身份验证请求
-        }
-
+    private boolean isMFAVerified(HttpServletRequest request){
         /* 检查是否完成身份验证 */
         boolean isAuthorized = false;// 是否授权
         String isRecoveryEmailVerification = getCookieValue(request, "recoveryEmailVerification");
@@ -336,6 +314,28 @@ public class UserController {
             isAuthorized = true;
         }
 
+        return isAuthorized;
+    }
+
+    /**
+     * 由系统对账户进行重置密码，需要完成验证：恢复邮箱验证 + 安全问题验证 + 个人信息验证 + 其他信息验证
+     * 此方法无需要经过 JWT interceptor 验证，因为此方法是由系统调用的，不需要验证用户身份
+     * @param request 请求对象, 附带身份验证 cookie
+     * @return 返回系统生成的密码
+     * @throws UnauthorizedException 非法操作，未初始化一个身份验证请求或者未完成身份验证
+     * @throws PasswordRepeatException 新密码与旧密码相同
+     */
+    @PostMapping("/reset_password")
+    public ApiResponse resetPassword(HttpServletRequest request) throws UnauthorizedException, PasswordRepeatException {
+        // 检查身份验证请求Cookie
+        String verificationRequest = getCookieValue(request, "verificationRequest"); // 此cookie值为用户邮箱
+        if (verificationRequest == null) {
+            logger.error("Unauthorized operation, the system has not initiated an identity verification request");
+            throw new UnauthorizedException("Unauthorized operation"); // 非法的操作，系统未发起身份验证请求
+        }
+
+        /* 检查是否完成身份验证 */
+        boolean isAuthorized = isMFAVerified(request);
         if(!isAuthorized) {
             logger.error("Unauthorized operation, the user has not completed identity verification");
             throw new UnauthorizedException("Unauthorized operation"); // 非法的操作，未完成身份验证没有重置权限
@@ -370,9 +370,6 @@ public class UserController {
             ClientDeviceInfo deviceInfo = (ClientDeviceInfo)request.getAttribute("clientDeviceInfo");
             String ipAddress = deviceInfo.getIpAddress();
 
-            // 获取User-Agent信息
-            String userAgent = request.getHeader("User-Agent");
-
             logger.error("Unauthorized attempt to reset password for user: {} from IP address: {}. Requested email: {}. Device info: {}",
                     emailFromToken, ipAddress, email, deviceInfo);
             throw new UnauthorizedException("Unauthorized operation");//非法操作
@@ -390,14 +387,8 @@ public class UserController {
             isAuthorized = true;
         }
 
-        String isRecoveryEmailVerification = getCookieValue(request, "recoveryEmailVerification");
-        String isSecurityQuestionVerification = getCookieValue(request, "securityQuestionVerification");
-        String isPersonalInfoVerification = getCookieValue(request, "personalInfoVerification");
-        String isOtherInfoVerification = getCookieValue(request, "otherInfoVerification");
-        if(isEqualTrue(isRecoveryEmailVerification) &&
-            isEqualTrue(isSecurityQuestionVerification) &&
-            isEqualTrue(isPersonalInfoVerification) &&
-            isEqualTrue(isOtherInfoVerification)) {
+        // 检查是否完成多因素身份验证
+        if(isMFAVerified(request)) {
             isAuthorized = true;
         }
 
@@ -434,7 +425,6 @@ public class UserController {
     /**
      * 用户注销, 使当前会话的 refresh token 失效
      * @param request 请求对象，在 cookie 中携带了 refresh token
-     * @return
      */
     @PostMapping("/logout")
     public ApiResponse logout(HttpServletRequest request) {

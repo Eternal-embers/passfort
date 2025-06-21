@@ -13,9 +13,12 @@ import org.tool.passfort.model.Credential;
 import org.tool.passfort.model.CredentialEncryption;
 import org.tool.passfort.service.CredentialService;
 import org.tool.passfort.util.encrypt.AesUtil;
+import org.tool.passfort.util.redis.RedisUtil;
 
 import javax.crypto.SecretKey;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional(rollbackFor = DatabaseOperationException.class)
@@ -24,12 +27,14 @@ public class CredentialServiceImpl implements CredentialService {
     private final CredentialMapper credentialMapper;
     private final CredentialEncryptionMapper credentialEncryptionMapper;
     private final AesUtil aesUtil;
+    private final RedisUtil redisUtil;
 
     @Autowired
-    public CredentialServiceImpl(CredentialMapper credentialMapper, CredentialEncryptionMapper credentialEncryptionMapper, AesUtil aesUtil) {
+    public CredentialServiceImpl(CredentialMapper credentialMapper, CredentialEncryptionMapper credentialEncryptionMapper, AesUtil aesUtil, RedisUtil redisUtil) {
         this.credentialMapper = credentialMapper;
         this.credentialEncryptionMapper = credentialEncryptionMapper;
         this.aesUtil = aesUtil;
+        this.redisUtil = redisUtil;
     }
 
     @Override
@@ -126,5 +131,17 @@ public class CredentialServiceImpl implements CredentialService {
         if (rowCount != 1) {
             logger.error("Failed to update credential valid: credentialId={}, valid={}", credentialId, valid);
         }
+    }
+
+    /**
+     * 获取最近使用的凭证中按访问次数排序的列表，列表元素为凭证ID
+     *
+     * @param userId        用户ID
+     */
+    public List<String> getAccessRecords(String userId) {
+        String recentlyUsedKey = "credential_recently_used" + ":" + userId;
+        Set<String> recentlyUsed = redisUtil.zReverseRange(recentlyUsedKey, 0, -1); // 按分数从高到低排序
+
+        return new ArrayList<>(recentlyUsed);
     }
 }

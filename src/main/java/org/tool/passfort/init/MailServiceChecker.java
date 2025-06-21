@@ -49,11 +49,11 @@ public class MailServiceChecker implements ApplicationRunner {
             // If no exception is thrown, the connection is successful
             long endTime = System.currentTimeMillis(); // 结束计时
             long duration = endTime - startTime; // 计算耗时
-            logger.info("Mail service connectivity check passed. Mail server is reachable. Connection time: {} milliseconds.", duration);
+            logger.info("Mail service connectivity check passed. Mail server is reachable. Connection time: {} ms.", duration);
         } catch (MessagingException e) {
             long endTime = System.currentTimeMillis(); // 结束计时（即使失败也记录耗时）
             long duration = endTime - startTime;
-            logger.error("Mail service connectivity check failed. Unable to connect to mail server in {} milliseconds. Error: {}. Please check your network connection or try changing the DNS to 8.8.8.8 or 114.114.114.114 if the problem persists.", duration, e.getMessage());
+            logger.error("Mail service connectivity check failed. Unable to connect to mail server in {} ms. Error: {}. Please check your network connection or try changing the DNS to 8.8.8.8 or 114.114.114.114 if the problem persists.", duration, e.getMessage());
             logger.debug("Detailed error information:", e);
         }
     }

@@ -14,12 +14,4 @@ public class ClientDeviceInfo {
     private String osVersion; // 操作系统版本
     private String browserName; // 浏览器名称
     private String browserVersion; // 浏览器版本
-
-    public ClientDeviceInfo(String deviceType, String osName, String osVersion, String browserName, String browserVersion) {
-        this.deviceType = deviceType;
-        this.osName = osName;
-        this.osVersion = osVersion;
-        this.browserName = browserName;
-        this.browserVersion = browserVersion;
-    }
 }
