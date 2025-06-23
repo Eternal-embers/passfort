@@ -139,7 +139,7 @@ public class CredentialController {
     @PostMapping("/update/validity")
     public ApiResponse updateValid(@RequestBody Map<String, String> data) {
         int credentialId = Integer.parseInt(data.get("credentialId"));
-        int valid = Integer.parseInt(data.get("valid"));
+        int valid = Integer.parseInt(data.get("validity"));
         credentialService.updateValid(credentialId, valid == 1);
         return ApiResponse.success("Update valid success");
     }

@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.tool.passfort.model.ClientDeviceInfo;
-import org.tool.passfort.util.ua.UserAgentUtil;
+import org.tool.passfort.util.http.UserAgentUtil;
 
 @Component
 public class DeviceInfoInterceptor implements HandlerInterceptor {

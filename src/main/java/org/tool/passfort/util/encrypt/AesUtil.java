@@ -104,7 +104,13 @@ public class AesUtil {
         return new String(original);
     }
 
-    public String decrypt(byte[] combinedData) throws  Exception {
+    /**
+     * 解密AES加密数据
+     * @param combinedData
+     * @return
+     * @throws Exception
+     */
+    public String decrypt(byte[] combinedData) throws Exception {
         // 从combinedData中分离IV、密钥和加密数据
         // IV长度为16字节，密钥长度为32字节
         byte[] iv = new byte[IV_SIZE / 8];

@@ -1,4 +1,4 @@
-package org.tool.passfort.util.ua;
+package org.tool.passfort.util.http;
 
 import org.tool.passfort.model.ClientDeviceInfo;
 import ua_parser.Client;

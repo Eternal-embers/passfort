@@ -15,110 +15,97 @@ public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(DatabaseOperationException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse handleDatabaseOperationException(DatabaseOperationException e) {
         return ApiResponse.failure(500, e.getMessage());
     }
 
     @ExceptionHandler(PasswordHashingException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse handlePasswordHashingException(PasswordHashingException e) {
         return ApiResponse.failure(500, e.getMessage());
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleEmailAlreadyRegisteredException(EmailAlreadyRegisteredException e) {
-        return ApiResponse.failure(400, e.getMessage());
+        return ApiResponse.failure(400, e.getMessage(), "email_already_registered");
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResponse handleUserNotFoundException(UserNotFoundException e) {
-        return ApiResponse.failure(404, e.getMessage());
+        return ApiResponse.failure(404, e.getMessage(), "user_not_found");
     }
 
     @ExceptionHandler(AccountLockedException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiResponse handleAccountLockedException(AccountLockedException e) {
-        return ApiResponse.failure(403, e.getMessage(), e.lockoutUntil);
+        return ApiResponse.failure(403, e.getMessage(), "account_locked");
     }
 
     @ExceptionHandler(VerifyPasswordFailedException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse handleVerifyPasswordFailedException(VerifyPasswordFailedException e) {
         return ApiResponse.failure(401, e.getMessage());
     }
 
     @ExceptionHandler(AccountNotActiveException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiResponse handleAccountNotActiveException(AccountNotActiveException e) {
         return ApiResponse.failure(403, e.getMessage());
     }
 
     @ExceptionHandler(PasswordInvalidException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse  handlePasswordInvalidException(PasswordInvalidException e) {
-        return ApiResponse.failure(401, e.getMessage(), e.getFailedLoginAttempts());
+        return ApiResponse.failure(401, e.getMessage(), "password_error");
     }
 
     @ExceptionHandler(UnauthorizedException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse handleUnauthorizedException(UnauthorizedException e) {
         return ApiResponse.failure(403, e.getMessage());
     }
 
     @ExceptionHandler(PasswordRepeatException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handlePasswordRepeatException(PasswordRepeatException e) {
         return ApiResponse.failure(400, e.getMessage());
     }
 
     @ExceptionHandler(AuthenticationExpiredException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse handleAuthenticationExpiredException(AuthenticationExpiredException e) {
         return ApiResponse.failure(401, e.getMessage(), "Expired");
     }
 
     @ExceptionHandler(VerificationCodeErrorException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleVerificationCodeErrorException(VerificationCodeErrorException e) {
-        return ApiResponse.failure(400, e.getMessage(), "VerificationCodeError");
+        return ApiResponse.failure(400, e.getMessage(), "code_error");
     }
 
     @ExceptionHandler(VerificationCodeExpireException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleVerificationCodeExpireException(VerificationCodeExpireException e) {
-        return ApiResponse.failure(400, e.getMessage(), "VerificationCodeExpire");
+        return ApiResponse.failure(400, e.getMessage(), "code_expire");
     }
 
     @ExceptionHandler(SecurityQuestionVerificationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleSecurityQuestionVerificationException(SecurityQuestionVerificationException e) {
         return ApiResponse.failure(400, e.getMessage(), e.getErrorQuestionIndex()); // 返回错误问题的索引
     }
 
     @ExceptionHandler(PersonalInfoVerificationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handlePersonalInfoVerificationException(PersonalInfoVerificationException e) {
         return ApiResponse.failure(400, e.getMessage(), e.getErrorParam()); // 返回错误字段
     }
 
     @ExceptionHandler(OtherInfoVerificationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handleOtherInfoVerificationException(OtherInfoVerificationException e) {
         return ApiResponse.failure(400, e.getMessage(), e.getErrorParam()); // 返回错误字段
     }
 
     @ExceptionHandler(PasswordVerificationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse handlePasswordVerificationException(PasswordVerificationException e) {
         return ApiResponse.failure(400, e.getMessage(), e.getFailedVerificationAttempts());
     }
 
+    @ExceptionHandler(LoginRevocationException.class)
+    public ApiResponse handleLoginRevocationException(LoginRevocationException e) {
+        return ApiResponse.failure(401, e.getMessage(), "login_revocation");
+    }
+
     // 捕获所有未明确处理的异常
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse handleException(Exception e) {
         // 打印异常类型、异常消息和堆栈跟踪的首行
         logger.error("Unhandled exception: {} - {} - {}", e.getClass().getName(), e.getMessage(), e.getStackTrace()[0].toString());

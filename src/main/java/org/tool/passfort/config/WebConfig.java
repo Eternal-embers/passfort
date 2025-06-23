@@ -43,6 +43,7 @@ public class WebConfig implements WebMvcConfigurer {
                 "/user/new_access_token",  //获取新的 access token
                 "/user/new_refresh_token",  //获取新的 refresh token
                 "/user/refresh_token_expiring_soon", //查询 refresh token 是否即将过期
+                "/mail/register_verify", // 注册的邮箱验证
                 "/mail/verify" // 邮箱验证
         };
 

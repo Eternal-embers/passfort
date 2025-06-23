@@ -14,6 +14,11 @@ public interface UserService {
     String encrypt(String data);
 
     /**
+     * 对AES加密并分片混淆的数据进行解密
+     */
+    String decrypt(String data) throws Exception;
+
+    /**
      * 使用默认邮箱注册方式注册账号，根据抛出的不同异常方式判定注册失败的原因
      * @param email 邮箱地址
      * @param password 密码
@@ -27,12 +32,12 @@ public interface UserService {
      * @param password 密码明文
      * @return JWT token
      */
-    LoginResponse loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException;
+    LoginResponse loginUser(String email, String password) throws AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException;
 
     /*
      * 根据用户Id获取Redis中最早的refreshToken
      */
-    String getRefreshTokenByUserId(int userId, String refreshTokenKey);
+    String getRefreshTokenByUserId(String refreshTokenKey);
 
     /**
      * 检查验证码是否正确
@@ -103,7 +108,14 @@ public interface UserService {
      * @return 新的 refresh token
      * @throws AuthenticationExpiredException 刷新令牌已过期
      */
-    String getNewRefreshToken(String refreshToken) throws AuthenticationExpiredException;
+    String getNewRefreshToken(String refreshToken) throws AuthenticationExpiredException, LoginRevocationException;
+
+    /**
+     * 检查 refresh token 是否有效
+     * @param refreshToken 刷新令牌
+     * @return 如果有效返回 true，否则返回 false
+     */
+    boolean isRefreshTokenValid(String refreshToken);
 
     /**
      * 检查 refresh token 是否即将过期
@@ -130,6 +142,6 @@ public interface UserService {
      * @param email 邮箱地址
      * @return 用户 ID
      */
-    int getUserId(String email);
+    Integer getUserId(String email);
 }
 

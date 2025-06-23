@@ -1,6 +1,8 @@
 package org.tool.passfort.service.impl;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
+import org.apache.commons.validator.routines.EmailValidator;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +70,13 @@ public class UserServiceImpl implements UserService {
         return Base64.getEncoder().encodeToString(shuffledEncryptedData);
     }
 
+    public String decrypt(String data) throws Exception {
+        byte[] shuffledEncryptedData = Base64.getDecoder().decode(data);
+        byte[] encryptedData = ShuffleEncryption.shuffleDecrypt(shuffledEncryptedData, SHUFFLE_ORDER);
+
+        return aesUtil.decrypt(encryptedData);
+    }
+
     /**
      * 使用默认邮箱注册方式注册账号，根据抛出的不同异常方式判定注册失败的原因
      * @param email 邮箱地址
@@ -77,7 +86,7 @@ public class UserServiceImpl implements UserService {
      * @throws EmailAlreadyRegisteredException 邮箱已注册
      */
     @Override
-    public void registerUser(String email, String password) throws PasswordHashingException, DatabaseOperationException, EmailAlreadyRegisteredException {
+    public void registerUser(@NotNull String email, @NotNull String password) throws PasswordHashingException, DatabaseOperationException, EmailAlreadyRegisteredException {
         //检查邮箱是否被注册
         boolean isRegistered = userMapper.isEmailRegistered(email);
 
@@ -118,14 +127,7 @@ public class UserServiceImpl implements UserService {
      * @throws PasswordInvalidException 密码错误
      */
     @Override
-    public LoginResponse loginUser(String email, String password) throws AccountNotActiveException, AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException {
-        //检查帐号是否激活
-        boolean isActive = userMapper.isActive(email);
-        if(!isActive){
-            logger.error("account not active for email: {}", email);
-            throw new AccountNotActiveException(email);
-        }
-
+    public LoginResponse loginUser(String email, String password) throws AccountLockedException, UserNotFoundException, VerifyPasswordFailedException, PasswordInvalidException {
         //检查帐号是否锁定
         boolean isLocked = userMapper.isAccountLocked(email);
         if(isLocked){
@@ -211,7 +213,7 @@ public class UserServiceImpl implements UserService {
      * 根据用户Id获取Redis中最早的refreshToken
      */
     @Override
-    public String getRefreshTokenByUserId(int userId, String refreshTokenKey) {
+    public String getRefreshTokenByUserId(String refreshTokenKey) {
         return (String) redisUtil.get(refreshTokenKey);
     }
 
@@ -430,7 +432,7 @@ public class UserServiceImpl implements UserService {
      * @throws AuthenticationExpiredException 刷新令牌已过期
      */
     @Override
-    public String getNewRefreshToken(String refreshToken) throws AuthenticationExpiredException {
+    public String getNewRefreshToken(String refreshToken) throws AuthenticationExpiredException, LoginRevocationException {
         // 解析 token
         DecodedJWT decodedJWT = jwtUtil.verifyToken(refreshToken);
         String tokenType = decodedJWT.getClaim("tokenType").asString();
@@ -450,7 +452,7 @@ public class UserServiceImpl implements UserService {
 
         // 检查 token 是否被吊销
         if (redisUtil.isExpire(oldKey)) {
-            throw new AuthenticationExpiredException("Refresh token has been revoked.");
+            throw new LoginRevocationException("Refresh token has for " + email + " has been revoked. ");
         }
 
         // 删除旧的 refresh token
@@ -472,6 +474,18 @@ public class UserServiceImpl implements UserService {
         redisUtil.set(newKey, newRefreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.SECONDS);
 
         return newRefreshToken;
+    }
+
+    /**
+     * 检查 refresh token 是否有效
+     * @param refreshToken 刷新令牌
+     * @return 如果 refresh token 有效返回 true，否则返回 false
+     */
+    public boolean isRefreshTokenValid(String refreshToken) {
+        DecodedJWT decodedJWT = jwtUtil.verifyToken(refreshToken);
+        String key = decodedJWT.getClaim("key").asString();
+
+        return redisUtil.isExpire(key);
     }
 
     // 查询 refresh token 是否即将过期
@@ -508,7 +522,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public int getUserId(String email) {
+    public Integer getUserId(String email) {
         return userMapper.getUserId(email);
     }
 }

@@ -1,6 +1,7 @@
 # https 配置
 server:
   port: 8443
+#  port: 8080
   http2:
     enabled: true
   ssl:

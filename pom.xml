@@ -199,6 +199,14 @@
             <artifactId>uap-java</artifactId>
             <version>1.6.1</version>
         </dependency>
+
+        <!-- 功能强大的验证库，提供了多种验证功能 -->
+        <!-- https://mvnrepository.com/artifact/commons-validator/commons-validator -->
+        <dependency>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+            <version>1.9.0</version>
+        </dependency>
     </dependencies>
 
     <build>

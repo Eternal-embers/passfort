@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ActivationInformation {
+public class ActivationData {
     private UserVerification userVerification;
     private String verificationCode;
     private String codeKey;

@@ -1,7 +1,7 @@
 package org.tool.passfort.service;
 
 import org.tool.passfort.exception.*;
-import org.tool.passfort.model.ActivationInformation;
+import org.tool.passfort.model.ActivationData;
 import org.tool.passfort.model.UserVerification;
 
 import java.util.List;
@@ -11,7 +11,7 @@ public interface UserVerificationService {
      * 创建用户验证信息
      * @param activationInformation 账户激活信息
      */
-    void createUserVerification(ActivationInformation activationInformation) throws VerificationCodeExpireException, VerificationCodeErrorException;
+    void createUserVerification(ActivationData activationInformation) throws VerificationCodeExpireException, VerificationCodeErrorException;
 
     /**
      * 用户需要验证之前的身份信息或通过密码验证，才能修改用户验证信息

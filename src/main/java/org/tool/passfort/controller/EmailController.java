@@ -9,13 +9,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.tool.passfort.dto.ApiResponse;
-import org.tool.passfort.dto.VerifyResponse;
 import org.tool.passfort.exception.FrequentVerificationCodeRequestException;
+import org.tool.passfort.exception.InvalidEmailException;
+import org.tool.passfort.exception.UserNotFoundException;
 import org.tool.passfort.model.ClientDeviceInfo;
 import org.tool.passfort.service.EmailService;
 import org.tool.passfort.service.UserService;
 import org.tool.passfort.util.redis.RedisUtil;
-import org.tool.passfort.util.ua.UserAgentUtil;
+import org.apache.commons.validator.routines.EmailValidator;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -74,9 +75,21 @@ public class EmailController {
         return templateVariables;
     }
 
+    /**
+     * 处理未注册的账号的邮箱验证，发送邮箱验证码，重新请求至少需要间隔一分钟
+     * @param request 包含 JWT interceptor 解析的用户信息
+     * @param data 请求体中需要包含 email
+     * @return 验证码和验证码的 redis 键
+     * @throws FrequentVerificationCodeRequestException 验证码请求间隔异常，疑似恶意攻击
+     */
     @PostMapping("/register_verify")
-    public ApiResponse sendRegisterEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException {
+    public ApiResponse sendRegisterEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException, InvalidEmailException {
+        // 验证邮箱格式
         String email = data.get("email");
+        EmailValidator validator = EmailValidator.getInstance();
+        if (!validator.isValid(email)) {
+            throw new InvalidEmailException("Invalid email format");
+        }
 
         // 获取客户端设备信息
         ClientDeviceInfo deviceInfo = (ClientDeviceInfo) request.getAttribute("clientDeviceInfo");
@@ -103,21 +116,28 @@ public class EmailController {
         // 发送邮件
         emailService.sendEmailWithTemplate(email, "PassFort 邮箱验证", "auth.html", templateVariables);
 
-        return ApiResponse.success(new VerifyResponse(verificationCode, codeKey));
+        return ApiResponse.success(codeKey);
     }
 
     /**
-     * 发送邮箱验证码，重新请求至少需要间隔一分钟
+     * 处理已经注册的账号的邮箱验证，发送邮箱验证码，重新请求至少需要间隔一分钟
      * @param request 包含 JWT interceptor 解析的用户信息
      * @param data 请求体中需要包含 email 和 operationType
      * @return 验证码和验证码的 redis 键
+     * @throws FrequentVerificationCodeRequestException 验证码请求间隔异常，疑似恶意攻击
+     * @throws UserNotFoundException 未注册的邮箱发起邮箱验证
      */
     @PostMapping("/verify")
-    public ApiResponse sendVerificationEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException {
+    public ApiResponse sendVerificationEmail(HttpServletRequest request, @RequestBody Map<String, String> data) throws FrequentVerificationCodeRequestException, UserNotFoundException, InvalidEmailException {
         // 获取请求参数
         String email = data.get("email");
         String operationType = data.get("operationType");
-        int userId = userService.getUserId(email);
+        Integer userId = userService.getUserId(email);
+
+        if(userId == null) {
+            logger.error("Unregistered email: {} request verification code", email); // 异常行为，未注册的邮箱发起邮箱验证
+            throw new UserNotFoundException(email);
+        }
 
         // 获取客户端设备信息
         ClientDeviceInfo deviceInfo = (ClientDeviceInfo) request.getAttribute("clientDeviceInfo");
@@ -144,6 +164,6 @@ public class EmailController {
         // 发送邮件
         emailService.sendEmailWithTemplate(email, "PassFort 邮箱验证", "auth.html", templateVariables);
 
-        return ApiResponse.success(new VerifyResponse(verificationCode, codeKey));
+        return ApiResponse.success(codeKey);
     }
 }
